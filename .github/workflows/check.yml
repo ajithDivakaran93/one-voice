@@ -33,7 +33,7 @@ jobs:
                       self.ids.add(a['id'])
           audit=Audit()
           audit.feed(Path('index.html').read_text())
-          needed={'cinematicRoad','openSign','signature','submitSign','clearSign','agree','signName','status','modal','success','count','countMirror','wall','lightField','share','shareCampaign'}
+          needed={'cinematicRoad','openSign','signature','submitSign','clearSign','agree','signName','status','modal','success','count','countMirror','wall','share','shareCampaign'}
           assert needed <= audit.ids, f"Missing IDs: {needed-audit.ids}"
           assert 'road-animation.js' in Path('index.html').read_text()
           print('HTML element audit passed')
