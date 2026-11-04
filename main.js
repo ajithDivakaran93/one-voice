@@ -1,7 +1,7 @@
 import {firebaseConfig} from './firebase-config.js';
 const $=id=>document.getElementById(id);
 const canvas=$('signature'),context=canvas.getContext('2d');
-let ready=false,submitting=false,signed=false,points=[],active=null,auth,db,functions,httpsCallable;
+let ready=false,submitting=false,signed=false,points=[],active=null,auth,db,functions,httpsCallable;let recentSupporterIds=[],pendingOwnId=null;
 const message=(s)=>{$('status').textContent=s;};
 const getStrokeCount=()=>points.reduce((n,line)=>n+line.length,0);
 function redraw(){
@@ -54,8 +54,9 @@ for(const id of ['modal','success'])$(id).addEventListener('click',e=>{if(e.targ
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){setDialog($('modal'),false);setDialog($('success'),false);}});
 addEventListener('resize',()=>{if(!$('modal').hidden)resizeSignature();});
 function drawPeople(ids){
+ recentSupporterIds=Array.from(new Set([...(pendingOwnId?[pendingOwnId]:[]),...ids])).slice(0,140);
  const wall=document.createDocumentFragment();
- ids.slice(0,140).forEach((id,i)=>{
+ recentSupporterIds.forEach((id,i)=>{
   // Decorative illustrations only; no signature or person's name is exposed.
   const person=document.createElement('span');
   person.className='supporter';person.setAttribute('aria-hidden','true');
@@ -66,11 +67,15 @@ function drawPeople(ids){
   wall.append(person);
  });
  $('wall').replaceChildren(wall);
- window.OneVoiceRoad?.setSupporters(ids);
+ window.OneVoiceRoad?.setSupporters(recentSupporterIds);
 }
 function updateCount(value){const shown=Number.isFinite(value)?value.toLocaleString('en-IN'):'—';$('count').textContent=shown;$('countMirror').textContent=shown;}
 function showConnected(text){const status=document.getElementById('connectionStatus');if(status)status.textContent=text;}
 function markSigned(){
+ // The server confirmed the signature (or that this account already signed).
+ // Display that person immediately while the public Firestore listener catches up.
+ pendingOwnId=auth?.currentUser?.uid||null;
+ drawPeople(recentSupporterIds);
  signed=true;sessionStorage.setItem('oneVoiceSigned','true');
  window.OneVoiceRoad?.celebrate();
  $('openSign').innerHTML='VOICE ADDED <span>✓</span>';
@@ -134,8 +139,16 @@ async function init(){
    updateCount(snapshot.exists()?Number(snapshot.data().count)||0:0);
   },error=>{console.warn('Counter subscription failed',error);updateCount(NaN);});
   const q=storeM.query(storeM.collection(db,'lights'),storeM.orderBy('createdAt','desc'),storeM.limit(140));
-  storeM.onSnapshot(q,snapshot=>drawPeople(snapshot.docs.map(doc=>doc.id)),
-   error=>{console.warn('Lights subscription failed',error);});
+  storeM.onSnapshot(q,snapshot=>{
+    const ids=snapshot.docs.map(doc=>doc.id);
+    // Once the server publishes the record, it no longer needs local priority.
+    if(pendingOwnId && ids.includes(pendingOwnId)) pendingOwnId=null;
+    drawPeople(ids);
+   },error=>{
+    console.warn('Supporter display subscription failed',error);
+    const notice=document.getElementById('voicesNotice');
+    if(notice)notice.textContent='Supporter illustrations temporarily unavailable. Please refresh.';
+   });
  }catch(error){
   console.error('Firebase setup failed:',error);
   ready=false;updateForm();
