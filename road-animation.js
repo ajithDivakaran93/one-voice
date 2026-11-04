@@ -18,7 +18,7 @@
    // Readable human silhouette: separated head, shoulders, torso, two legs and
    // a raised fist. Slow animated fist lift is deliberately subtle.
    const mobile=w<700;
-   const height=clamp(26+scale*(mobile?45:66),23,mobile?57:85);
+   const height=clamp(23+scale*(mobile?37:58),22,mobile?46:70);
    const head=height*.105, neck=y-height*.77, shoulderY=y-height*.70;
    const hipY=y-height*.34, torsoWidth=height*.23;
    const color=highlight?'#ffe3e6':(symbolic?'#ed3452':'#ff7189');
@@ -94,29 +94,38 @@
      const p=project(z),q=project(e);
      poly([[mid-1-p.p*6,p.y],[mid+1+p.p*6,p.y],[mid+1+q.p*8,q.y],[mid-1-q.p*8,q.y]],'#d8d4cd');
    }
-   // Spacious roadside vigil. Symbolic figures do not count as signatures.
-   // The centerline and moving highway remain open and visually dominant.
+   // Balanced human vigil: use fixed screen-space slots instead of equally
+   // spaced perspective depths. This avoids bunching at the near end.
+   // Four symbolic figures are not counted as supporters; they set the scene.
+   // Actual submissions occupy separate vacant slots (up to 8 on mobile).
    const mobile=w<700,figures=[];
-   const basePerSide=mobile?6:8;
+   const rows=mobile?7:9;
+   const yStart=mobile?.46:.43,yEnd=mobile?.755:.81;
+   const pForY=portion=>clamp((portion-.36)/.83,.035,.95);
+   const actualPerSide=Math.min(Math.ceil(ids.length/2),mobile?4:5);
    for(const side of [-1,1]){
-     for(let slot=0;slot<basePerSide;slot++){
-       const z=.76-slot*(mobile?.080:.060),p=project(z);
-       const x=clamp(mid+side*(p.half+(mobile?12:18)),mobile?26:38,w-(mobile?26:38));
-       const y=clamp(p.y,h*.44,h*(mobile?.77:.84));
-       figures.push({x,y,z,scale:p.p,seed:slot*31+(side===-1?7:13),side,symbolic:true,highlight:false});
+     let added=0;
+     for(let slot=0;slot<rows;slot++){
+       // Real supporters fill alternating gaps between symbolic figures.
+       const realSlot=(slot%2===0);
+       if(realSlot && added>=actualPerSide)continue;
+       const portion=yStart+(yEnd-yStart)*(slot/(rows-1));
+       const p=pForY(portion),z=Math.pow(p,1/1.7);
+       const shoulderMargin=mobile?10:16;
+       const x=clamp(mid+side*(project(z).half+shoulderMargin),mobile?29:40,w-(mobile?29:40));
+       const y=h*portion;
+       if(realSlot){
+         const index=added*2+(side===-1?0:1);
+         if(index>=ids.length)continue;
+         const id=ids[index];
+         figures.push({x,y,z,scale:p,seed:hash(id),side,symbolic:false,highlight:index===0&&t<flashUntil});
+         added++;
+       }else{
+         figures.push({x,y,z,scale:p,seed:slot*71+(side===-1?7:13),side,symbolic:true,highlight:false});
+       }
      }
    }
-   // Real submissions join the same vigil, not an overlapping crowd.
-   // Render recent supporters at separate perspective positions.
-   const maxReal=mobile?12:20;
-   for(let i=0;i<Math.min(ids.length,maxReal);i++){
-     const side=i%2===0?-1:1,slot=Math.floor(i/2);
-     const z=.81-slot*(mobile?.080:.055),p=project(z);
-     const x=clamp(mid+side*(p.half+(mobile?22:32)),mobile?29:42,w-(mobile?29:42));
-     const y=clamp(p.y,h*.44,h*(mobile?.79:.86));
-     figures.push({x,y,z,scale:p.p,seed:hash(ids[i]),side,symbolic:false,highlight:i===0&&t<flashUntil});
-   }
-   figures.sort((a,b)=>a.z-b.z);
+   figures.sort((a,b)=>a.y-b.y);
    for(const item of figures)person(item.x,item.y,item.scale,item.seed,t,item.side,item.highlight,item.symbolic);
    // atmospheric foreground vignette
    const vignette=ctx.createLinearGradient(0,0,0,h);
