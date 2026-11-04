@@ -5,8 +5,16 @@ const canvas=$('signature'),ctx=canvas.getContext('2d');
 function redraw(){const r=canvas.getBoundingClientRect();ctx.clearRect(0,0,r.width,r.height);ctx.strokeStyle='#18181e';ctx.lineWidth=2.6;ctx.lineCap='round';ctx.lineJoin='round';for(const line of points){ctx.beginPath();line.forEach(([x,y],i)=>i?ctx.lineTo(x*r.width,y*r.height):ctx.moveTo(x*r.width,y*r.height));if(line.length===1){ctx.lineTo(line[0][0]*r.width+.1,line[0][1]*r.height+.1)}ctx.stroke();}}
 function resize(){const r=canvas.getBoundingClientRect(),ratio=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.max(1,Math.round(r.width*ratio));canvas.height=Math.max(1,Math.round(r.height*ratio));ctx.setTransform(ratio,0,0,ratio,0,0);redraw();}
 function pos(e){const r=canvas.getBoundingClientRect();return [Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))]}
-function update(){ $('submitSign').disabled=!ready||submitted||!$('agree').checked||points.length===0; }
-canvas.addEventListener('pointerdown',e=>{e.preventDefault();canvas.setPointerCapture(e.pointerId);drawing=true;stroke=[pos(e)];points.push(stroke);$('hint').hidden=true;redraw();update()});
+function update(){
+ const status=$('status');
+ $('submitSign').disabled=submitted;
+ if(submitted)return;
+ if(!ready)status.textContent='Connecting to Firebase… You can draw your signature while we connect.';
+ else if(points.length===0)status.textContent='Draw your signature in the white box to continue.';
+ else if(!$('agree').checked)status.textContent='Tick the consent box, then tap Light a Warning.';
+ else status.textContent='Ready. Tap Light a Warning to submit.';
+}
+canvas.addEventListener('pointerdown',e=>{e.preventDefault();canvas.setPointerCapture(e.pointerId);if(points.length>=40){$('status').textContent='Too many strokes. Tap CLEAR and sign again.';return;}drawing=true;stroke=[pos(e)];points.push(stroke);$('hint').hidden=true;redraw();update()});
 canvas.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();if(points.reduce((n,s)=>n+s.length,0)>=400)return;stroke.push(pos(e));redraw();});
 for(const evt of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(evt,()=>{drawing=false;stroke=null;});
 $('clearSign').onclick=()=>{points=[];$('hint').hidden=false;redraw();update();};
@@ -30,10 +38,10 @@ async function init(){
   storeM.onSnapshot(storeM.doc(db,'stats','campaign'),snap=>{$('count').textContent=(snap.exists()?snap.data().count:0).toLocaleString('en-IN');},()=>{$('modeNote').textContent='Unable to read the live count. Please refresh.';});
   const q=storeM.query(storeM.collection(db,'lights'),storeM.orderBy('createdAt','desc'),storeM.limit(150));
   storeM.onSnapshot(q,snap=>showLights(snap.docs.map(d=>d.id)),()=>{});
- }catch(error){console.error('Firebase initialization failed',error);ready=false;update();$('modeNote').textContent='CAMPAIGN CONNECTION UNAVAILABLE · PLEASE TRY AGAIN';}
+ }catch(error){console.error('Firebase initialization failed',error);ready=false;update();$('modeNote').textContent='FIREBASE CONNECTION FAILED · CHECK SETUP AND REFRESH';$('status').textContent='Firebase connection unavailable. Enable Anonymous Authentication in project one-voice-44e1f and refresh.';}
 }
 $('submitSign').onclick=async()=>{
- if(!ready||submitted||!$('agree').checked||points.length===0)return;
+ if(submitted)return;if(!ready){$('status').textContent='Not connected to Firebase yet. Check Anonymous Authentication, Firestore and your internet connection, then refresh.';return;}if(!points.length){$('status').textContent='Please draw your signature first.';return;}if(!$('agree').checked){$('status').textContent='Please check the consent box first.';return;}
  $('submitSign').disabled=true;$('status').textContent='Saving your voice…';
  try{
   const add=callable(functions,'addVoice');
