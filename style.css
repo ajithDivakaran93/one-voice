@@ -50,3 +50,52 @@
 /* V14: clearly distinguish verified stored signature count from the 100-voice campaign goal */
 .header-total .count-goal{display:block;margin-top:4px;font-size:9px;letter-spacing:1.05px;color:#e5d3d8;font-weight:700;white-space:nowrap}
 @media(max-width:700px){.header-total .count-goal{font-size:8px;letter-spacing:.55px}}
+
+/* V17 mobile polish: visible identity, calmer call to action, unobstructed road */
+@media(max-width:700px){
+ .site-header{
+  position:fixed;top:0;left:0;right:0;
+  z-index:350;align-items:center;
+  padding:calc(10px + env(safe-area-inset-top,0px)) 18px 11px;
+  background:linear-gradient(to bottom,rgba(6,7,11,.96),rgba(6,7,11,.78) 78%,rgba(6,7,11,0));
+ }
+ .brand{font-size:13px;letter-spacing:1.7px}
+ .header-total{
+  padding:6px 10px;min-width:84px;
+  background:#101015d9;border-color:#ffffff24;border-radius:5px;
+ }
+ .header-total strong{font-size:24px}
+ .header-total span{font-size:8px;letter-spacing:.7px}
+ .header-total .count-goal{font-size:8px}
+ .hero-content{
+  top:clamp(109px,15svh,150px);
+  left:22px;right:18px;
+ }
+ .hero h1{
+  font-size:clamp(42px,10.1vw,67px);
+  line-height:1.01;
+ }
+ .hero-last{letter-spacing:2px;font-size:10px}
+ .road-caption{
+  top:auto;bottom:clamp(113px,16svh,158px);
+  font-size:9px;letter-spacing:3px;
+  opacity:.82;gap:10px;
+ }
+ .road-caption span{width:16px}
+ .action-dock{
+  padding:8px 15px calc(9px + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(to top,#09090d 65%,rgba(9,9,13,.96) 85%,rgba(9,9,13,0));
+  border-top:0;box-shadow:0 -10px 36px #0008;
+ }
+ .action-dock .cta{
+  min-height:53px;padding:12px 19px;
+  border-radius:6px;font-size:12px;letter-spacing:1.6px;
+  box-shadow:0 5px 22px #fa2c5052;
+ }
+ .action-dock .cta span{font-size:19px}
+}
+@media(max-height:650px) and (max-width:700px){
+ .hero-content{top:96px}
+ .hero h1{font-size:clamp(39px,9.5vw,55px)}
+ .road-caption{bottom:102px}
+}
