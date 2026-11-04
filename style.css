@@ -142,3 +142,57 @@ header{height:66px;z-index:9}
  .hero-bottom #openSign{height:54px!important;min-height:54px!important}
  .hero .notice{bottom:155px!important}
 }
+
+/* V8: dock is OUTSIDE .hero and its isolated canvas stacking context. */
+.signup-dock{
+ position:fixed!important;z-index:1000!important;
+ left:0!important;right:0!important;bottom:0!important;
+ width:100%!important;margin:0!important;
+ padding:12px max(18px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px))!important;
+ background:linear-gradient(to top,#09090c 68%,rgba(9,9,12,.95) 85%,rgba(9,9,12,.7))!important;
+ box-shadow:0 -12px 40px #0009!important;
+ pointer-events:auto!important;transform:none!important;
+}
+.signup-dock .hero-bottom{
+ position:relative!important;inset:auto!important;
+ display:flex!important;flex-direction:row!important;
+ align-items:center!important;justify-content:space-between!important;
+ gap:18px!important;width:100%!important;
+ max-width:1100px!important;margin:0 auto!important;
+ padding:0!important;background:none!important;
+ transform:none!important;pointer-events:auto!important;
+}
+.signup-dock #openSign{
+ position:relative!important;inset:auto!important;z-index:1!important;
+ display:flex!important;justify-content:center!important;align-items:center!important;
+ visibility:visible!important;opacity:1!important;
+ flex:0 1 390px!important;min-width:200px!important;height:62px!important;
+ border:1px solid #ff7586!important;border-radius:3px!important;
+ color:white!important;background:#f42e49!important;
+ box-shadow:0 4px 27px #ff274960!important;
+ font-size:15px!important;font-weight:900!important;
+ letter-spacing:1.5px!important;
+ pointer-events:auto!important;
+}
+.signup-dock .livecount{display:flex!important;flex-direction:column!important;gap:4px!important}
+.signup-dock .count{font-size:38px!important;line-height:1!important}
+.signup-dock .live-label{font-size:10px!important;letter-spacing:1.2px!important}
+.overlay{z-index:2000!important}
+.hero{padding-bottom:170px!important}
+.hero .notice{bottom:155px!important}
+.scroll-hint{bottom:155px!important}
+@media(max-width:650px){
+ .signup-dock{padding:10px 18px calc(14px + env(safe-area-inset-bottom,0px))!important}
+ .signup-dock .hero-bottom{
+  display:flex!important;flex-direction:column!important;
+  align-items:stretch!important;gap:9px!important;
+ }
+ .signup-dock .livecount{flex-direction:row!important;align-items:baseline!important;gap:10px!important}
+ .signup-dock .count{font-size:28px!important}
+ .signup-dock #openSign{
+  flex:none!important;width:100%!important;min-width:0!important;
+  height:59px!important;min-height:59px!important;font-size:14px!important;
+ }
+ .hero .notice{bottom:165px!important}
+ .scroll-hint{display:none!important}
+}
