@@ -16,7 +16,7 @@
  const ellipse=(x,y,rx,ry,color)=>{ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,Math.max(.1,rx),Math.max(.1,ry),0,0,Math.PI*2);ctx.fill();};
  function person(x,y,scale,seed,t,side,highlight=false,symbolic=false){
    // Protective human silhouette: head, jacket, legs and an outward, raised arm.
-   const height=clamp(12+scale*(w<700?34:48),10,w<700?38:52),head=Math.max(2,height*.095),shoulder=height*.12;
+   const height=clamp(15+scale*(w<700?43:60),13,w<700?49:69),head=Math.max(2,height*.095),shoulder=height*.12;
    const foot=y,hip=y-height*.35,chest=y-height*.69,neck=y-height*.83;
    const sway=Math.sin(t*1.2+seed*.03)*height*.011;
    const bright=highlight?'#ffd2dc':(symbolic?'#c72440':'#ff526e');
@@ -70,12 +70,12 @@
    // The symbolic crowd exists from the first load and is deliberately
    // excluded from the live counter. Small red people hug the road edges.
    const mobile=w<700,figures=[];
-   const basePerSide=mobile?18:24;
+   const basePerSide=mobile?28:38;
    for(const side of [-1,1]){
      for(let slot=0;slot<basePerSide;slot++){
-       const z=clamp(.80-slot*(mobile?.032:.026),.12,.80),p=project(z);
-       const margin=mobile?9:14;
-       const x=clamp(mid+side*(p.half+(mobile?5:9)),margin,w-margin);
+       const z=clamp(.83-slot*(mobile?.025:.019),.12,.83),p=project(z);
+       const margin=mobile?18:24;
+       const x=clamp(mid+side*(p.half+(mobile?2:4)),margin,w-margin);
        const y=clamp(p.y,h*.42,h*(mobile?.79:.87));
        figures.push({x,y,z,scale:p.p,seed:slot*31+(side===-1?7:13),side,symbolic:true,highlight:false});
      }
@@ -85,7 +85,7 @@
      const side=i%2===0?-1:1,slot=Math.floor(i/2);
      const z=clamp(.76-slot*.020,.14,.76),p=project(z);
      const margin=mobile?9:14;
-     const x=clamp(mid+side*(p.half+(mobile?10:15)),margin,w-margin);
+     const x=clamp(mid+side*(p.half+(mobile?5:8)),margin,w-margin);
      const y=clamp(p.y,h*.42,h*(mobile?.79:.87));
      figures.push({x,y,z,scale:p.p,seed:hash(ids[i]),side,symbolic:false,highlight:i===0&&t<flashUntil});
    }
