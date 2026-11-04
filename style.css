@@ -46,3 +46,7 @@
  .action-dock .cta{width:100%}
 }
 @media(prefers-reduced-motion:reduce){.supporter{animation:none}}
+
+/* V14: clearly distinguish verified stored signature count from the 100-voice campaign goal */
+.header-total .count-goal{display:block;margin-top:4px;font-size:9px;letter-spacing:1.05px;color:#e5d3d8;font-weight:700;white-space:nowrap}
+@media(max-width:700px){.header-total .count-goal{font-size:8px;letter-spacing:.55px}}
