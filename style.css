@@ -14,3 +14,35 @@
 }
 @media(max-height:620px) and (max-width:700px){.hero-content{top:94px}.hero h1{font-size:clamp(39px,9vw,58px)}.hero-last{margin-top:10px}.road-caption{top:59%}.discover{display:none}.action-dock .cta{min-height:48px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important}}
+
+/* V11: signatures at the top; human silhouettes replace warning lights */
+.site-header{align-items:flex-start}
+.header-total{margin-left:auto;min-width:110px;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:1px;background:rgba(7,8,12,.62);border:1px solid rgba(255,255,255,.12);padding:8px 12px;border-radius:3px}
+.header-total strong{font-size:clamp(23px,3vw,38px);font-weight:900;color:#fff;font-variant-numeric:tabular-nums;line-height:1}
+.header-total span{font-size:9px;color:#ff6b80;font-weight:900;letter-spacing:1.7px}
+.action-dock .dock-inner{justify-content:center}
+.action-dock .cta{width:min(440px,100%)}
+.road-caption{top:65%;color:#fff;letter-spacing:3.1px}
+.voices .wall{display:flex;flex-wrap:wrap;align-content:flex-start;gap:20px 13px;min-height:200px;justify-content:center}
+.supporter{--c:#bcc0c8;display:block;position:relative;width:25px;height:58px;flex:0 0 25px;filter:drop-shadow(0 0 5px #d2bfc13a);animation:stand 3.2s ease-in-out infinite;animation-delay:var(--delay)}
+.supporter:nth-child(5n+2){--c:#9eacbb}.supporter:nth-child(5n+3){--c:#d4aea8}.supporter:nth-child(5n+4){--c:#9aa5a6}.supporter:nth-child(5n){--c:#adadb7}
+.supporter>span{position:absolute;display:block;background:var(--c)}
+.supporter-head{width:10px;height:10px;top:1px;left:8px;border-radius:50%}
+.supporter-body{width:15px;height:24px;top:13px;left:5px;border-radius:5px 5px 3px 3px}
+.supporter-arm-left{width:5px;height:22px;top:14px;left:2px;transform:rotate(18deg);transform-origin:top}
+.supporter-arm-right{width:5px;height:22px;top:14px;right:2px;transform:rotate(-35deg);transform-origin:top}
+.supporter-leg-left{width:5px;height:22px;top:35px;left:7px;transform:rotate(5deg)}
+.supporter-leg-right{width:5px;height:22px;top:35px;right:6px;transform:rotate(-5deg)}
+.success-person{display:flex;align-items:center;justify-content:center;margin:15px auto 24px;width:54px;height:54px;color:#f43856;font-size:46px;text-shadow:0 0 21px #f53658}
+@keyframes stand{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+@media(max-width:700px){
+ .site-header{padding:15px 19px;gap:8px}
+ .header-total{padding:8px 9px;min-width:90px}
+ .header-total strong{font-size:26px}
+ .header-total span{font-size:8px;letter-spacing:1px}
+ .voices .wall{gap:15px 9px;padding:22px 14px}
+ .road-caption{top:67%}
+ .action-dock .dock-inner{display:block}
+ .action-dock .cta{width:100%}
+}
+@media(prefers-reduced-motion:reduce){.supporter{animation:none}}
