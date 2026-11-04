@@ -28,7 +28,7 @@ function updateForm(){
  if(!ready)message('Firebase is not connected. You can sign, but submission needs a connection.');
  else if(!points.length)message('Draw your signature to continue.');
  else if(!$('agree').checked)message('Check the consent box to submit.');
- else message('Ready. Tap LIGHT A WARNING to submit your voice.');
+ else message('Ready. Tap STAND WITH US to submit your voice.');
 }
 canvas.addEventListener('pointerdown',e=>{
  e.preventDefault();if(points.length>=40){message('Too many strokes. Please clear and sign again.');return;}
@@ -53,22 +53,26 @@ $('closeSuccess').onclick=$('done').onclick=()=>setDialog($('success'),false);
 for(const id of ['modal','success'])$(id).addEventListener('click',e=>{if(e.target===$(id))setDialog($(id),false);});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){setDialog($('modal'),false);setDialog($('success'),false);}});
 addEventListener('resize',()=>{if(!$('modal').hidden)resizeSignature();});
-function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
-function drawLights(ids){
- const wall=document.createDocumentFragment(),road=document.createDocumentFragment();
- ids.forEach((id,i)=>{
-  const h=hash(id),dot=document.createElement('span');dot.className='walllight';
-  dot.style.animationDelay=((i%19)*.13)+'s';dot.title='Anonymous submitted voice';wall.append(dot);
-  const lamp=document.createElement('span');lamp.className='spark';
-  lamp.style.left=(22+h%56)+'%';lamp.style.top=(55+Math.floor(h/83)%29)+'%';
-  lamp.style.animationDelay=((i%11)*.15)+'s';road.append(lamp);
+function drawPeople(ids){
+ const wall=document.createDocumentFragment();
+ ids.slice(0,140).forEach((id,i)=>{
+  // Decorative illustrations only; no signature or person's name is exposed.
+  const person=document.createElement('span');
+  person.className='supporter';person.setAttribute('aria-hidden','true');
+  person.style.setProperty('--delay',((i%17)*-.13)+'s');
+  for(const part of ['head','body','arm-left','arm-right','leg-left','leg-right']){
+   const shape=document.createElement('span');shape.className='supporter-'+part;person.append(shape);
+  }
+  wall.append(person);
  });
- $('wall').replaceChildren(wall);$('lightField').replaceChildren(road);
+ $('wall').replaceChildren(wall);
+ window.OneVoiceRoad?.setSupporters(ids);
 }
 function updateCount(value){const shown=Number.isFinite(value)?value.toLocaleString('en-IN'):'—';$('count').textContent=shown;$('countMirror').textContent=shown;}
 function showConnected(text){const status=document.getElementById('connectionStatus');if(status)status.textContent=text;}
 function markSigned(){
  signed=true;sessionStorage.setItem('oneVoiceSigned','true');
+ window.OneVoiceRoad?.celebrate();
  $('openSign').innerHTML='VOICE ADDED <span>✓</span>';
  setDialog($('modal'),false);setDialog($('success'),true);
 }
@@ -106,7 +110,7 @@ $('submitSign').onclick=async()=>{
    message(detail);
   }
  }finally{
-  submitting=false;$('submitSign').innerHTML='LIGHT A WARNING <span>↗</span>';
+  submitting=false;$('submitSign').innerHTML='STAND WITH US <span>↗</span>';
   if(!signed)updateForm();
  }
 };
@@ -130,7 +134,7 @@ async function init(){
    updateCount(snapshot.exists()?Number(snapshot.data().count)||0:0);
   },error=>{console.warn('Counter subscription failed',error);updateCount(NaN);});
   const q=storeM.query(storeM.collection(db,'lights'),storeM.orderBy('createdAt','desc'),storeM.limit(140));
-  storeM.onSnapshot(q,snapshot=>drawLights(snapshot.docs.map(doc=>doc.id)),
+  storeM.onSnapshot(q,snapshot=>drawPeople(snapshot.docs.map(doc=>doc.id)),
    error=>{console.warn('Lights subscription failed',error);});
  }catch(error){
   console.error('Firebase setup failed:',error);
