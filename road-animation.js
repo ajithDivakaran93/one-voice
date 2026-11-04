@@ -11,7 +11,7 @@
  const hash=id=>{let n=2166136261;for(let i=0;i<id.length;i++){n^=id.charCodeAt(i);n=Math.imul(n,16777619);}return n>>>0;};
  const center=()=>w*.5;
  const horizon=()=>h*.36;
- const project=(depth)=>{const p=Math.pow(depth,1.7);return {p,y:horizon()+p*h*.83,half:w*(.018+p*.90)}};
+ const project=(depth)=>{const p=Math.pow(depth,1.7);return {p,y:horizon()+p*h*.83,half:w*(.018+p*.58)}};
  const poly=(points,color)=>{ctx.fillStyle=color;ctx.beginPath();points.forEach((a,i)=>i?ctx.lineTo(...a):ctx.moveTo(...a));ctx.closePath();ctx.fill();};
  const ellipse=(x,y,rx,ry,color)=>{ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,Math.max(.1,rx),Math.max(.1,ry),0,0,Math.PI*2);ctx.fill();};
  function person(x,y,scale,seed,t,side,highlight){
@@ -67,24 +67,31 @@
      const p=project(z),q=project(e);
      poly([[mid-1-p.p*6,p.y],[mid+1+p.p*6,p.y],[mid+1+q.p*8,q.y],[mid-1-q.p*8,q.y]],'#d8d4cd');
    }
-   // Draw recent supporters from far to near for accurate perspective
+   // Human solidarity corridor. People are deliberately INSIDE the visible
+   // viewport on narrow phones; the old projection placed them off-screen.
    const count=Math.min(ids.length,100),figures=[];
+   const mobile=w<700;
+   const maxEachSide=50;
    for(let i=0;i<count;i++){
      const side=i%2===0?-1:1;
      const slot=Math.floor(i/2);
-     // First/newest people near foreground; older people recede into distance.
-     const z=clamp(.84-slot*.018,.06,.84);
+     // Newest people remain in the foreground for immediate recognition.
+     const z=clamp(.78-slot*.0135,.10,.78);
      const p=project(z),seed=hash(ids[i]);
-     const offset=w*(.038+p.p*.035);
-     const x=mid+side*(p.half+offset);
-     figures.push({x,y:p.y,z,scale:p.p,seed,side,highlight:i===0&&t<flashUntil});
+     const figureHeight=clamp(17+p.p*(mobile?73:110),18,mobile?85:125);
+     const margin=figureHeight*.40+8;
+     const desired=mid+side*(p.half+(mobile?8:22));
+     const x=clamp(desired,margin,w-margin);
+     // Slightly raise the nearest people so their feet aren't hidden by CTA.
+     const y=clamp(p.y,h*.43,h*(mobile?.77:.87));
+     figures.push({x,y,z,scale:p.p,seed,side,highlight:i===0&&t<flashUntil});
    }
    figures.sort((x,y)=>x.z-y.z);
    for(const item of figures)person(item.x,item.y,item.scale,item.seed,t,item.side,item.highlight);
    // atmospheric foreground vignette
    const vignette=ctx.createLinearGradient(0,0,0,h);
    vignette.addColorStop(0,'#05050877');vignette.addColorStop(.25,'#05050827');
-   vignette.addColorStop(.70,'#00000000');vignette.addColorStop(1,'#050508cc');
+   vignette.addColorStop(.70,'#00000000');vignette.addColorStop(1,'#05050866');
    ctx.fillStyle=vignette;ctx.fillRect(0,0,w,h);
  }
  function resize(){
