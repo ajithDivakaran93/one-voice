@@ -100,7 +100,7 @@
    const basePerSide=mobile?6:8;
    for(const side of [-1,1]){
      for(let slot=0;slot<basePerSide;slot++){
-       const z=.76-slot*(mobile?.105:.078),p=project(z);
+       const z=.76-slot*(mobile?.080:.060),p=project(z);
        const x=clamp(mid+side*(p.half+(mobile?12:18)),mobile?26:38,w-(mobile?26:38));
        const y=clamp(p.y,h*.44,h*(mobile?.77:.84));
        figures.push({x,y,z,scale:p.p,seed:slot*31+(side===-1?7:13),side,symbolic:true,highlight:false});
@@ -111,7 +111,7 @@
    const maxReal=mobile?12:20;
    for(let i=0;i<Math.min(ids.length,maxReal);i++){
      const side=i%2===0?-1:1,slot=Math.floor(i/2);
-     const z=.81-slot*(mobile?.10:.065),p=project(z);
+     const z=.81-slot*(mobile?.080:.055),p=project(z);
      const x=clamp(mid+side*(p.half+(mobile?22:32)),mobile?29:42,w-(mobile?29:42));
      const y=clamp(p.y,h*.44,h*(mobile?.79:.86));
      figures.push({x,y,z,scale:p.p,seed:hash(ids[i]),side,symbolic:false,highlight:i===0&&t<flashUntil});
