@@ -20,7 +20,7 @@
    const foot=y,hip=y-height*.35,chest=y-height*.69,neck=y-height*.83;
    const sway=Math.sin(t*1.2+seed*.03)*height*.011;
    const bright=highlight?'#ffd2dc':(symbolic?'#c72440':'#ff526e');
-   ctx.save();ctx.globalAlpha=symbolic?.57:1;
+   ctx.save();ctx.globalAlpha=symbolic ? 0.57 : 1;
    const glow=ctx.createRadialGradient(x,chest,0,x,chest,height*.9);
    glow.addColorStop(0,symbolic?'#d91d3b26':'#ff315a7a');glow.addColorStop(1,'#d91d3b00');
    ellipse(x,chest,height*.9,height*.9,glow);
