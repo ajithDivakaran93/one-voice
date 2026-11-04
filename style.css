@@ -97,3 +97,48 @@ header{height:66px;z-index:9}
  .hero .primary{min-height:60px}
  .hero .notice{bottom:40px}
 }
+
+/* V7: persistent mobile signing CTA above browser safe area */
+@media (max-width:650px){
+  .hero-bottom{
+    position:fixed!important;
+    left:0!important;right:0!important;
+    bottom:0!important;
+    z-index:100!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:9px!important;
+    padding:12px 18px calc(14px + env(safe-area-inset-bottom, 0px))!important;
+    margin:0!important;
+    background:linear-gradient(to top,rgba(5,5,8,.99) 58%,rgba(5,5,8,.87) 85%,transparent);
+    pointer-events:none;
+    transform:none!important;
+  }
+  .hero-bottom .livecount{display:flex!important;flex-direction:row;align-items:baseline;gap:10px;pointer-events:none}
+  .hero-bottom .livecount .count{font-size:28px!important;line-height:1!important}
+  .hero-bottom .live-label{font-size:9px!important}
+  .hero-bottom #openSign{
+    display:flex!important;visibility:visible!important;opacity:1!important;
+    position:relative!important;z-index:101!important;
+    flex:none!important;width:100%!important;min-width:0!important;
+    height:60px!important;min-height:60px!important;
+    padding:14px!important;
+    color:white!important;background:#ff304b!important;
+    border:1px solid #ff677b!important;
+    box-shadow:0 0 30px #ff234a70!important;
+    pointer-events:auto!important;
+    font-size:14px!important;
+    letter-spacing:1.5px!important;
+    border-radius:3px!important;
+  }
+  .hero .notice{position:absolute!important;bottom:196px!important;left:24px!important;right:24px!important;max-width:none!important;font-size:9px!important}
+  .hero .scroll-hint{display:none!important}
+  .hero-copy{top:clamp(98px,12svh,148px)!important}
+  .hero h1{font-size:clamp(38px,9.5vw,62px)!important}
+}
+@media(max-height:660px) and (max-width:650px){
+ .hero-bottom{padding-top:7px!important;gap:5px!important}
+ .hero-bottom .livecount .count{font-size:23px!important}
+ .hero-bottom #openSign{height:54px!important;min-height:54px!important}
+ .hero .notice{bottom:155px!important}
+}
