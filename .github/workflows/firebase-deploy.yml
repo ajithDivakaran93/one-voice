@@ -1,0 +1,25 @@
+name: Deploy ONE VOICE to Firebase
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_ONE_VOICE }}'
+      - name: Install dependencies
+        run: |
+          npm install --prefix functions
+          npm install --global firebase-tools
+      - name: Deploy Firestore rules, Functions and Hosting
+        run: firebase deploy --project one-voice-44e1f --only firestore:rules,functions,hosting --non-interactive
