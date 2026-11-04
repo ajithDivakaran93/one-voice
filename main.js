@@ -1,54 +1,141 @@
 import {firebaseConfig} from './firebase-config.js';
 const $=id=>document.getElementById(id);
-let db,auth,functions,callable,ready=false,submitted=false,points=[],stroke=null,drawing=false;
-const canvas=$('signature'),ctx=canvas.getContext('2d');
-function redraw(){const r=canvas.getBoundingClientRect();ctx.clearRect(0,0,r.width,r.height);ctx.strokeStyle='#18181e';ctx.lineWidth=2.6;ctx.lineCap='round';ctx.lineJoin='round';for(const line of points){ctx.beginPath();line.forEach(([x,y],i)=>i?ctx.lineTo(x*r.width,y*r.height):ctx.moveTo(x*r.width,y*r.height));if(line.length===1){ctx.lineTo(line[0][0]*r.width+.1,line[0][1]*r.height+.1)}ctx.stroke();}}
-function resize(){const r=canvas.getBoundingClientRect(),ratio=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.max(1,Math.round(r.width*ratio));canvas.height=Math.max(1,Math.round(r.height*ratio));ctx.setTransform(ratio,0,0,ratio,0,0);redraw();}
-function pos(e){const r=canvas.getBoundingClientRect();return [Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))]}
-function update(){
- const status=$('status');
- $('submitSign').disabled=submitted;
- if(submitted)return;
- if(!ready)status.textContent='Connecting to Firebase… You can draw your signature while we connect.';
- else if(points.length===0)status.textContent='Draw your signature in the white box to continue.';
- else if(!$('agree').checked)status.textContent='Tick the consent box, then tap Light a Warning.';
- else status.textContent='Ready. Tap Light a Warning to submit.';
+const canvas=$('signature'),context=canvas.getContext('2d');
+let ready=false,submitting=false,signed=false,points=[],active=null,auth,db,functions,httpsCallable;
+const message=(s)=>{$('status').textContent=s;};
+const getStrokeCount=()=>points.reduce((n,line)=>n+line.length,0);
+function redraw(){
+ const r=canvas.getBoundingClientRect();context.clearRect(0,0,r.width,r.height);
+ context.strokeStyle='#15151b';context.lineWidth=2.5;context.lineJoin='round';context.lineCap='round';
+ for(const line of points){
+  context.beginPath();line.forEach(([x,y],i)=>i?context.lineTo(x*r.width,y*r.height):context.moveTo(x*r.width,y*r.height));
+  if(line.length===1)context.lineTo(line[0][0]*r.width+.01,line[0][1]*r.height+.01);
+  context.stroke();
+ }
 }
-canvas.addEventListener('pointerdown',e=>{e.preventDefault();canvas.setPointerCapture(e.pointerId);if(points.length>=40){$('status').textContent='Too many strokes. Tap CLEAR and sign again.';return;}drawing=true;stroke=[pos(e)];points.push(stroke);$('hint').hidden=true;redraw();update()});
-canvas.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();if(points.reduce((n,s)=>n+s.length,0)>=400)return;stroke.push(pos(e));redraw();});
-for(const evt of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(evt,()=>{drawing=false;stroke=null;});
-$('clearSign').onclick=()=>{points=[];$('hint').hidden=false;redraw();update();};
-$('agree').onchange=update;
-$('openSign').onclick=()=>{if(submitted){$('success').hidden=false;return;}$('modal').hidden=false;requestAnimationFrame(resize);};
-$('closeSign').onclick=()=>{$('modal').hidden=true;};
-$('closeSuccess').onclick=$('done').onclick=()=>{$('success').hidden=true;};
-function hash(s){let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
-function showLights(ids){$('lightField').replaceChildren();$('wall').replaceChildren();ids.forEach((id,i)=>{const h=hash(id);const light=document.createElement('i');light.className='spark';light.style.left=(27+h%46)+'%';light.style.top=(52+(Math.floor(h/79)%40))+'%';light.style.animationDelay=((i%17)*.11)+'s';$('lightField').append(light);const dot=document.createElement('i');dot.className='walllight';dot.title='Anonymous campaign supporter';dot.style.animationDelay=((i%13)*.17)+'s';$('wall').append(dot);});}
+function resizeSignature(){
+ const r=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);
+ canvas.width=Math.max(1,Math.round(r.width*dpr));canvas.height=Math.max(1,Math.round(r.height*dpr));
+ context.setTransform(dpr,0,0,dpr,0,0);redraw();
+}
+function point(e){const r=canvas.getBoundingClientRect();return [
+ Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),
+ Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))
+];}
+function updateForm(){
+ $('submitSign').disabled=submitting;
+ if(submitting)return;
+ if(!ready)message('Firebase is not connected. You can sign, but submission needs a connection.');
+ else if(!points.length)message('Draw your signature to continue.');
+ else if(!$('agree').checked)message('Check the consent box to submit.');
+ else message('Ready. Tap LIGHT A WARNING to submit your voice.');
+}
+canvas.addEventListener('pointerdown',e=>{
+ e.preventDefault();if(points.length>=40){message('Too many strokes. Please clear and sign again.');return;}
+ canvas.setPointerCapture(e.pointerId);active=[point(e)];points.push(active);$('hint').hidden=true;redraw();updateForm();
+});
+canvas.addEventListener('pointermove',e=>{
+ if(!active)return;e.preventDefault();if(getStrokeCount()>=400)return;
+ active.push(point(e));redraw();
+});
+for(const event of ['pointerup','pointercancel','lostpointercapture']){
+ canvas.addEventListener(event,()=>{active=null;});
+}
+$('clearSign').onclick=()=>{points=[];active=null;$('hint').hidden=false;redraw();updateForm();};
+$('agree').addEventListener('change',updateForm);
+function setDialog(node,show){
+ node.hidden=!show;document.body.style.overflow=(!$('modal').hidden||!$('success').hidden)?'hidden':'';
+ if(show)requestAnimationFrame(()=>{if(node===$('modal'))resizeSignature();});
+}
+$('openSign').onclick=()=>{if(signed){setDialog($('success'),true);return;}setDialog($('modal'),true);};
+$('closeSign').onclick=()=>setDialog($('modal'),false);
+$('closeSuccess').onclick=$('done').onclick=()=>setDialog($('success'),false);
+for(const id of ['modal','success'])$(id).addEventListener('click',e=>{if(e.target===$(id))setDialog($(id),false);});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){setDialog($('modal'),false);setDialog($('success'),false);}});
+addEventListener('resize',()=>{if(!$('modal').hidden)resizeSignature();});
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function drawLights(ids){
+ const wall=document.createDocumentFragment(),road=document.createDocumentFragment();
+ ids.forEach((id,i)=>{
+  const h=hash(id),dot=document.createElement('span');dot.className='walllight';
+  dot.style.animationDelay=((i%19)*.13)+'s';dot.title='Anonymous submitted voice';wall.append(dot);
+  const lamp=document.createElement('span');lamp.className='spark';
+  lamp.style.left=(22+h%56)+'%';lamp.style.top=(55+Math.floor(h/83)%29)+'%';
+  lamp.style.animationDelay=((i%11)*.15)+'s';road.append(lamp);
+ });
+ $('wall').replaceChildren(wall);$('lightField').replaceChildren(road);
+}
+function updateCount(value){const shown=Number.isFinite(value)?value.toLocaleString('en-IN'):'—';$('count').textContent=shown;$('countMirror').textContent=shown;}
+function showConnected(text){const status=document.getElementById('connectionStatus');if(status)status.textContent=text;}
+function markSigned(){
+ signed=true;sessionStorage.setItem('oneVoiceSigned','true');
+ $('openSign').innerHTML='VOICE ADDED <span>✓</span>';
+ setDialog($('modal'),false);setDialog($('success'),true);
+}
+async function shareCampaign(){
+ const url=location.origin+location.pathname;
+ try{
+  if(navigator.share){await navigator.share({title:'ONE VOICE · INFOPARK',text:'Enough is enough. Join the call for safer roads around Infopark.',url});}
+  else if(navigator.clipboard){await navigator.clipboard.writeText(url);$('shareCampaign').textContent='LINK COPIED ✓';}
+  else{location.href='https://wa.me/?text='+encodeURIComponent('Join ONE VOICE: '+url);}
+ }catch(e){if(e?.name!=='AbortError')console.warn('Share unavailable',e);}
+}
+$('share').onclick=shareCampaign;
+$('shareCampaign').onclick=shareCampaign;
+$('submitSign').onclick=async()=>{
+ if(submitting)return;
+ if(!ready){message('Firebase connection unavailable. Refresh the page and check your internet connection.');return;}
+ if(!points.length){message('Please draw your signature first.');return;}
+ if(!$('agree').checked){message('Please accept the consent checkbox.');return;}
+ submitting=true;updateForm();$('submitSign').innerHTML='SAVING YOUR VOICE…';
+ message('Submitting securely. Do not close the page.');
+ try{
+  const addVoice=httpsCallable(functions,'addVoice');
+  const strokes=points.map(line=>line.map(([x,y])=>[Math.round(x*1000)/1000,Math.round(y*1000)/1000]));
+  await addVoice({name:$('signName').value.trim(),strokes,consent:true});
+  markSigned();
+ }catch(error){
+  console.error('Signature submission failed:',error);
+  if(error.code==='functions/already-exists'){
+   markSigned();
+  }else{
+   const detail=error.code==='functions/not-found'?'Signature service is not deployed. An organizer must deploy Cloud Functions.':
+    error.code==='functions/unauthenticated'?'Sign-in failed. Please reload the page.':
+    error.code==='functions/resource-exhausted'?'Too many requests. Please try again later.':
+    'Could not save the signature. Please retry or contact the organizers.';
+   message(detail);
+  }
+ }finally{
+  submitting=false;$('submitSign').innerHTML='LIGHT A WARNING <span>↗</span>';
+  if(!signed)updateForm();
+ }
+};
 async function init(){
- try {
-  const [appM,authM,storeM,funcM]=await Promise.all([
+ if(sessionStorage.getItem('oneVoiceSigned')==='true'){signed=true;$('openSign').innerHTML='VOICE ADDED <span>✓</span>';}
+ try{
+  const [appM,authM,storeM,functionsM]=await Promise.all([
    import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js'),
    import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js'),
    import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js'),
-   import('https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js')]);
+   import('https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js')
+  ]);
   const app=appM.initializeApp(firebaseConfig);
-  auth=authM.getAuth(app);db=storeM.getFirestore(app);functions=funcM.getFunctions(app,'asia-south1');callable=funcM.httpsCallable;
+  auth=authM.getAuth(app);
+  db=storeM.getFirestore(app);
+  functions=functionsM.getFunctions(app,'asia-south1');
+  httpsCallable=functionsM.httpsCallable;
   await authM.signInAnonymously(auth);
-  ready=true;update();$('modeNote').textContent='LIVE CAMPAIGN · PRIVATE SIGNATURES';
-  storeM.onSnapshot(storeM.doc(db,'stats','campaign'),snap=>{$('count').textContent=(snap.exists()?snap.data().count:0).toLocaleString('en-IN');},()=>{$('modeNote').textContent='Unable to read the live count. Please refresh.';});
-  const q=storeM.query(storeM.collection(db,'lights'),storeM.orderBy('createdAt','desc'),storeM.limit(150));
-  storeM.onSnapshot(q,snap=>showLights(snap.docs.map(d=>d.id)),()=>{});
- }catch(error){console.error('Firebase initialization failed',error);ready=false;update();$('modeNote').textContent='FIREBASE CONNECTION FAILED · CHECK SETUP AND REFRESH';$('status').textContent='Firebase connection unavailable. Enable Anonymous Authentication in project one-voice-44e1f and refresh.';}
+  ready=true;updateForm();
+  storeM.onSnapshot(storeM.doc(db,'stats','campaign'),snapshot=>{
+   updateCount(snapshot.exists()?Number(snapshot.data().count)||0:0);
+  },error=>{console.warn('Counter subscription failed',error);updateCount(NaN);});
+  const q=storeM.query(storeM.collection(db,'lights'),storeM.orderBy('createdAt','desc'),storeM.limit(140));
+  storeM.onSnapshot(q,snapshot=>drawLights(snapshot.docs.map(doc=>doc.id)),
+   error=>{console.warn('Lights subscription failed',error);});
+ }catch(error){
+  console.error('Firebase setup failed:',error);
+  ready=false;updateForm();
+  message('Unable to connect to the campaign. Ask an organizer to check Firebase Authentication.');
+ }
 }
-$('submitSign').onclick=async()=>{
- if(submitted)return;if(!ready){$('status').textContent='Not connected to Firebase yet. Check Anonymous Authentication, Firestore and your internet connection, then refresh.';return;}if(!points.length){$('status').textContent='Please draw your signature first.';return;}if(!$('agree').checked){$('status').textContent='Please check the consent box first.';return;}
- $('submitSign').disabled=true;$('status').textContent='Saving your voice…';
- try{
-  const add=callable(functions,'addVoice');
-  const strokes=points.map(line=>line.map(([x,y])=>[Math.round(x*1000)/1000,Math.round(y*1000)/1000]));
-  await add({name:$('signName').value.trim(),strokes,consent:true});
-  submitted=true;$('modal').hidden=true;$('success').hidden=false;$('openSign').textContent='YOUR VOICE IS COUNTED';$('status').textContent='';
- }catch(error){console.error('Signature save failed',error);$('status').textContent=error.code==='functions/already-exists'?'This anonymous account has already signed.':(error.message||'Unable to save. Try again.');update();}
-};
-$('share').onclick=async()=>{try{if(navigator.share)await navigator.share({title:'ONE VOICE · Infopark',text:'Stand for safer roads to Infopark.',url:location.href});else{await navigator.clipboard.writeText(location.href);$('share').textContent='LINK COPIED ✓';}}catch{}};
-window.addEventListener('resize',()=>{if(!$('modal').hidden)resize();});init();
+init();
