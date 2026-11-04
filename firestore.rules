@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  match /signatures/{uid} { allow read, write: if false; }
+  match /lights/{uid} { allow read: if true; allow write: if false; }
+  match /stats/{docId} { allow read: if docId == 'campaign'; allow write: if false; }
+  match /{document=**} { allow read, write: if false; }
+ }
+}
