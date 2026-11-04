@@ -76,3 +76,24 @@ header{height:66px;z-index:9}
 }
 @media(max-width:380px){.hero h1{font-size:9.5vw}.hero-copy{top:105px}.hero-bottom{bottom:75px}.hero .notice{bottom:33px}}
 @media(prefers-reduced-motion:reduce){.road-center,.sky-glow,.beacon{animation:none!important}}
+
+/* V6: moving cinematic road is the primary hero visual */
+.roadscene{inset:0!important;z-index:1!important;background:#050507!important;opacity:1!important;overflow:hidden}
+#cinematicRoad{position:absolute;inset:0;display:block;width:100%;height:100%;z-index:2}
+.roadscene>.road,.roadscene>.horizon,.roadscene>.sky-glow,.roadscene>.beacon,.roadscene>.road-vignette{display:none!important}
+#lightField{position:absolute;inset:0;z-index:3;pointer-events:none}
+.hero-copy{top:clamp(103px,13svh,165px);z-index:5}
+.hero h1{font-size:clamp(54px,7.2vw,115px);line-height:1.01}
+.hero-sub{font-size:clamp(11px,1.3vw,15px);letter-spacing:2px}
+.hero-bottom{z-index:6;bottom:clamp(70px,10svh,110px)}
+.hero .primary{background:#f32944;box-shadow:0 4px 28px #f1264560}
+.ambient-red{z-index:0}
+@media(max-width:650px){
+ .hero-copy{top:clamp(102px,13svh,150px);left:23px;right:20px}
+ .hero h1{font-size:clamp(40px,10vw,68px);line-height:1.04}
+ .hero-sub{font-size:10px;letter-spacing:1.7px}
+ .roadscene{inset:0!important}
+ .hero-bottom{bottom:clamp(76px,11svh,105px);gap:13px}
+ .hero .primary{min-height:60px}
+ .hero .notice{bottom:40px}
+}
