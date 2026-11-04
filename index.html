@@ -8,20 +8,20 @@
 <meta property="og:title" content="ONE VOICE | How many more?">
 <meta property="og:description" content="One life lost. One demand: safer roads. Raise your voice for Infopark.">
 <title>ONE VOICE · INFOPARK</title>
-<link rel="stylesheet" href="/style.css?v=10">
+<link rel="stylesheet" href="/style.css?v=11">
 </head>
 <body>
-<header class="site-header"><a class="brand" href="#top" aria-label="ONE VOICE, home"><span class="brand-signal"></span>ONE<span>VOICE</span></a><span class="location">INFOPARK · KOCHI</span></header>
+<header class="site-header"><a class="brand" href="#top" aria-label="ONE VOICE, home"><span class="brand-signal"></span>ONE<span>VOICE</span></a><div class="header-total" aria-live="polite"><strong id="count">—</strong><span>SIGNATURES</span></div></header>
 <main>
   <section class="hero" id="top" aria-labelledby="impactTitle">
-    <div class="roadscene" aria-hidden="true"><canvas id="cinematicRoad"></canvas><div id="lightField"></div></div>
+    <div class="roadscene" aria-hidden="true"><canvas id="cinematicRoad"></canvas></div>
     <div class="hero-shade" aria-hidden="true"></div>
     <div class="hero-content">
       <p class="overline"><span class="signal-dot"></span> THIS MUST STOP</p>
       <h1 id="impactTitle">SHE WAS<br>JUST <em>WALKING.</em></h1>
       <p class="hero-last">SHE NEVER CAME HOME.</p>
     </div>
-    <div class="road-caption" aria-hidden="true"><span></span> HOW MANY MORE? <span></span></div>
+    <div class="road-caption" aria-hidden="true"><span></span> STAND TOGETHER <span></span></div>
     <a class="discover" href="#demands" aria-label="Read our demands">SCROLL TO KNOW WHY <span>↓</span></a>
   </section>
   <section class="manifesto" id="demands">
@@ -35,44 +35,43 @@
     </div>
   </section>
   <section class="voices" id="voices">
-    <div class="voices-heading"><div><div class="section-kicker">EVERY VOICE LEAVES A LIGHT</div><h2>THE ROAD<br><em>OF VOICES.</em></h2></div><div class="voices-big"><span id="countMirror">—</span><small>VOICES RAISED</small></div></div>
-    <div id="wall" class="wall" aria-label="Anonymous lights representing recent supporters"></div>
-    <p class="privacy">Each light represents a recent anonymous submission. Handwritten signatures are kept private. The count represents submitted voices, not verified unique people.</p>
+    <div class="voices-heading"><div><div class="section-kicker">EVERY SIGNATURE BRINGS SOMEONE TO THE ROAD</div><h2>STAND<br><em>TOGETHER.</em></h2></div><div class="voices-big"><span id="countMirror">—</span><small>VOICES RAISED</small></div></div>
+    <div id="wall" class="wall" aria-label="Illustrated silhouettes representing recent supporters"></div>
+    <p class="privacy">Each illustrated person represents a recent anonymous submission. The full signature total appears above. Handwritten signatures remain private; signatures are not verified as unique individuals.</p>
     <button id="shareCampaign" class="share-link" type="button">SHARE THE CAMPAIGN <span>↗</span></button>
   </section>
 </main>
 <div class="action-dock" id="actionDock">
   <div class="dock-inner">
-    <div class="dock-total"><strong id="count">—</strong><span><i class="signal-dot"></i> VOICES RAISED</span></div>
     <button class="cta" type="button" id="openSign">ADD YOUR VOICE <span>↗</span></button>
   </div>
 </div>
 <div id="modal" class="overlay" hidden>
  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
   <button id="closeSign" type="button" class="close" aria-label="Close signature form">×</button>
-  <div class="section-kicker">ONE SIGNATURE. ONE WARNING.</div>
+  <div class="section-kicker">ONE SIGNATURE. ONE PERSON STANDING UP.</div>
   <h2 id="dialogTitle">TAKE A <em>STAND.</em></h2>
-  <p class="modal-intro">Your signature becomes one more warning light on our road.</p>
+  <p class="modal-intro">Your signature adds one more person standing for safer roads.</p>
   <label class="field-label" for="signName">YOUR NAME <small>(OPTIONAL)</small></label>
   <input id="signName" maxlength="60" autocomplete="name" placeholder="Your name" />
   <div class="siglabel"><label class="field-label" for="signature">YOUR SIGNATURE</label><button id="clearSign" type="button" class="text-button">CLEAR</button></div>
   <div class="canvaswrap"><canvas id="signature" aria-label="Draw your signature using your finger or mouse"></canvas><span id="hint">SIGN HERE WITH YOUR FINGER</span></div>
   <label class="consent"><input id="agree" type="checkbox"/><span>I support safer roads around Infopark and consent to this signature being stored privately for the campaign.</span></label>
   <p id="status" role="status" aria-live="polite">Draw your signature, then agree to continue.</p>
-  <button id="submitSign" class="cta submit" type="button">LIGHT A WARNING <span>↗</span></button>
+  <button id="submitSign" class="cta submit" type="button">STAND WITH US <span>↗</span></button>
  </div>
 </div>
 <div id="success" class="overlay" hidden>
  <div class="dialog success-dialog" role="dialog" aria-modal="true" aria-labelledby="successTitle">
   <button id="closeSuccess" type="button" class="close" aria-label="Close confirmation">×</button>
-  <span class="success-light" aria-hidden="true"></span>
+  <span class="success-person" aria-hidden="true">●</span>
   <div class="section-kicker">YOUR VOICE IS COUNTED</div>
-  <h2 id="successTitle">ANOTHER<br><em>LIGHT ON.</em></h2>
+  <h2 id="successTitle">ANOTHER<br><em>PERSON STANDS.</em></h2>
   <p>Your signature has been saved. Help more people stand for safer roads.</p>
   <button id="share" class="cta" type="button">SHARE ONE VOICE <span>↗</span></button>
   <button id="done" class="text-button" type="button">BACK TO THE ROAD</button>
  </div>
 </div>
-<script src="/road-animation.js?v=10" defer></script>
-<script type="module" src="/main.js?v=10"></script>
+<script src="/road-animation.js?v=11" defer></script>
+<script type="module" src="/main.js?v=11"></script>
 </body></html>
