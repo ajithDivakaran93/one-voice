@@ -179,3 +179,18 @@
 .directory-paging button:disabled{opacity:.55}
 .name-list li.anonymous-entry{color:#81757b;font-style:italic;font-weight:500}
 @media(max-width:700px){.directory-paging{align-items:stretch;flex-direction:column}.directory-paging button{width:100%}}
+
+/* V27: Progressive Techies identity and strong live signature counter */
+.site-header{align-items:center;gap:12px}
+.site-header .brand-logo{display:flex;align-items:center;flex-shrink:1;min-width:0;letter-spacing:normal;text-decoration:none}
+.brand-logo img{width:clamp(145px,19vw,220px);height:auto;max-height:92px;display:block;object-fit:contain}
+.header-total{border:1px solid #ff405e8a;background:linear-gradient(135deg,#3e0b1b,#190e16 78%);box-shadow:0 0 26px #f62c4b35;min-width:124px;padding:9px 14px;gap:4px}
+.header-total strong{color:#fff;font-size:clamp(31px,4vw,48px);font-weight:950;line-height:1;text-shadow:0 0 19px #ff456c8c}
+.header-total span{color:#ff8da0;letter-spacing:1.6px;font-size:10px}
+@media(max-width:700px){
+ .site-header{align-items:center;padding:calc(9px + env(safe-area-inset-top,0px)) 15px 10px}
+ .brand-logo img{width:clamp(126px,37vw,158px);max-height:68px}
+ .header-total{min-width:96px;padding:8px 11px;gap:3px;border-radius:6px}
+ .header-total strong{font-size:clamp(30px,8vw,37px)}
+ .header-total span{font-size:9px;letter-spacing:1px}
+}
