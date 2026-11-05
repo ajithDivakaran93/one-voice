@@ -58,7 +58,7 @@
    const hipY=y-height*.34, torsoWidth=height*.23;
    const color=highlight?'#ffe3e6':(symbolic?'#ed3452':'#ff7189');
    const motion=reduce.matches?0:(.5+.5*Math.sin(t*1.8+seed*.19));
-   const protestMotion=highlight?1:motion;
+   const protestMotion=highlight ? (.55+.45*motion) : motion;
    const sway=0;
    const limb=Math.max(2.2,height*.082);
    ctx.save();ctx.globalAlpha=(symbolic ? 0.76 : 1)*arrival;
@@ -239,7 +239,8 @@
      entry={id,name:cleanName||names.get(id)||'',start:performance.now()/1000};
      if(entry.name)names.set(id,entry.name);
      if(!ids.includes(id))ids.unshift(id);
-     cycleEpoch=entry.start+5;
+     // After the five-second welcome, advance to the next person's slogan.
+     cycleEpoch=entry.start+2;
      render(entry.start);
    }
  };
