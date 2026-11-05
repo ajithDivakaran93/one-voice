@@ -126,3 +126,48 @@
  .success-toast-icon{width:33px;height:33px;font-size:19px}
 }
 @media(prefers-reduced-motion:reduce){.success-toast{animation:none}}
+
+/* V19: campaign navigation, opt-in supporter directory and petition sheet */
+.action-dock .dock-inner{flex-direction:column!important;gap:7px!important;align-items:center!important}
+.dock-links{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;width:100%;padding:4px 0}
+.dock-links button{background:transparent;border:0;padding:6px 0;color:#e8d3d8;font-size:10px;letter-spacing:1.25px;font-weight:800}
+.dock-links button span{color:#ff5471}.dock-links>span{color:#ff5674a8}
+.dock-links button:hover{text-decoration:underline;text-underline-offset:4px}
+.public-name{margin-top:13px!important;margin-bottom:0!important;border:1px solid #c7c2c2;padding:10px;background:#fff}
+.public-name strong{color:#921c32}
+.info-overlay{z-index:1200!important}
+.info-dialog{max-height:min(88dvh,920px);width:min(100%,610px);background:#f4f1ea}
+.info-dialog h2{font-size:clamp(52px,8vw,76px);margin:15px 0 14px}
+.supporter-summary{display:flex;align-items:center;gap:12px;padding:15px 0;border-block:1px solid #c9c0c0;margin:19px 0}
+.supporter-summary strong{font-size:40px;color:#bd2440;font-weight:900;line-height:1}
+.supporter-summary span{font-size:10px;letter-spacing:1.6px;font-weight:900;color:#555}
+.supporter-names{min-height:100px;max-height:35dvh;overflow-y:auto;overscroll-behavior:contain}
+.supporter-names .name-list{list-style:decimal;padding-left:31px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:25px;row-gap:0;margin:0}
+.name-list li{padding:12px 7px;border-bottom:1px solid #d7d1cf;font-size:14px;font-weight:700;overflow-wrap:anywhere}
+.name-list li::marker{color:#af2a44;font-size:11px}
+.empty-supporters{font-size:14px;line-height:1.6;color:#68616a}
+.privacy-dark{font-size:11px;line-height:1.6;color:#756d70;margin-top:16px}
+.petition-dialog{width:min(100%,680px);line-height:1.6}
+.petition-dialog h2{line-height:.95}
+.petition-status{display:inline-block;background:#f3e5df;color:#8d2640;padding:6px 9px;font-size:9px;letter-spacing:1.5px;font-weight:900;margin-bottom:13px}
+.petition-lead{font-size:20px;line-height:1.4;font-weight:750;color:#202027}
+.petition-dialog p:not(.petition-lead){font-size:13px;color:#47444a}
+.petition-dialog h3{font-size:12px;letter-spacing:2px;margin:30px 0 10px}
+.petition-dialog ol{padding-left:25px}
+.petition-dialog li{padding-left:5px;margin:0 0 13px;font-size:13px;color:#444047}
+.petition-dialog li::marker{color:#a92242;font-weight:900}
+.petition-dialog .petition-footnote{border-top:1px solid #d7cecb;padding-top:15px;color:#7b4452!important}
+.petition-dialog .cta{margin-top:15px}
+@media(max-width:700px){
+ .action-dock{padding:7px 15px calc(7px + env(safe-area-inset-bottom,0px))}
+ .action-dock .cta{min-height:50px}
+ .dock-links{justify-content:space-between;gap:6px;padding:0 5px 2px}
+ .dock-links button{font-size:9px;letter-spacing:.55px;padding:5px 0}
+ .dock-links>span{font-size:10px}
+ .hero .road-caption{bottom:clamp(154px,19svh,188px)}
+ .success-toast{bottom:calc(117px + env(safe-area-inset-bottom,0px))}
+ .info-dialog{max-height:calc(100dvh - 24px);padding:23px}
+ .supporter-names .name-list{grid-template-columns:1fr}
+ .supporter-names{max-height:42dvh}
+ .petition-dialog .petition-lead{font-size:18px}
+}
