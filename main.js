@@ -1,7 +1,7 @@
 import {firebaseConfig} from './firebase-config.js';
 const $=id=>document.getElementById(id);
 const canvas=$('signature'),context=canvas.getContext('2d');
-let ready=false,submitting=false,signed=false,points=[],active=null,auth,db,functions,httpsCallable;let recentSupporterIds=[],pendingOwnId=null;
+let ready=false,submitting=false,signed=false,points=[],active=null,auth,db,functions,httpsCallable;let recentSupporterIds=[],pendingOwnId=null,pendingOwnName='',publicNamesById=new Map();
 let storeApi=null,directoryRows=[],directoryCursor=null,directoryBusy=false,directoryDone=false,directoryError='',directoryLoaded=false;
 let latestPageDocs=[],olderPageDocs=[],directoryRevision=0;
 const message=(s)=>{$('status').textContent=s;};
@@ -80,7 +80,7 @@ function drawPeople(ids){
   wall.append(person);
  });
  $('wall').replaceChildren(wall);
- window.OneVoiceRoad?.setSupporters(recentSupporterIds);
+ window.OneVoiceRoad?.setSupporters(recentSupporterIds.map(id=>({id,name:id===pendingOwnId&&pendingOwnName?pendingOwnName:(publicNamesById.get(id)||'')})));
 }
 // The first page uses a persistent Firestore snapshot, so new signatures
 // appear in the list immediately without reopening or refreshing the dialog.
@@ -172,13 +172,14 @@ async function loadSupporterPage(){
 }
 function updateCount(value){const shown=Number.isFinite(value)?value.toLocaleString('en-IN'):'—';$('count').textContent=shown;$('countMirror').textContent=shown;renderSupporters();}
 function showConnected(text){const status=document.getElementById('connectionStatus');if(status)status.textContent=text;}
-function markSigned(animate=true){
+function markSigned(animate=true,publicName=''){
  // The server confirmed the signature (or that this account already signed).
  // Display that person immediately while the public Firestore listener catches up.
  pendingOwnId=auth?.currentUser?.uid||null;
+ pendingOwnName=typeof publicName==='string'?publicName.trim():'';
  drawPeople(recentSupporterIds);
  signed=true;sessionStorage.setItem('oneVoiceSigned','true');
- if(animate && pendingOwnId)window.OneVoiceRoad?.celebrate(pendingOwnId);
+ if(animate && pendingOwnId)window.OneVoiceRoad?.celebrate(pendingOwnId,pendingOwnName);
  $('openSign').innerHTML='VOICE ADDED <span>✓</span>';
  setDialog($('modal'),false);
  window.scrollTo({top:0,behavior:'instant'});
@@ -210,7 +211,7 @@ $('submitSign').onclick=async()=>{
   if($('showName').checked && result?.data?.publicNameListed!==true){
    $('success').querySelector('.success-toast-copy span').textContent='Signature saved. Public name listing needs the updated Cloud Function.';
   }
-  markSigned();
+  markSigned(true,result?.data?.publicNameListed===true?$('signName').value.trim():'');
  }catch(error){
   console.error('Signature submission failed:',error);
   if(error.code==='functions/already-exists'){
@@ -255,7 +256,10 @@ async function init(){
   const recentQuery=storeM.query(lightsRef,storeM.orderBy('createdAt','desc'),storeM.limit(140));
   storeM.onSnapshot(recentQuery,snapshot=>{
     const ids=snapshot.docs.map(doc=>doc.id);
-    if(pendingOwnId && ids.includes(pendingOwnId))pendingOwnId=null;
+    publicNamesById=new Map(snapshot.docs.map(doc=>[doc.id,typeof doc.data().displayName==='string'?doc.data().displayName.trim():'']).filter(([,name])=>!!name));
+    if(pendingOwnId && ids.includes(pendingOwnId)){
+      pendingOwnId=null;pendingOwnName='';
+    }
     drawPeople(ids);
   },error=>{
     console.warn('Supporter illustration subscription failed',error);
