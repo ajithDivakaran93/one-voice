@@ -23,3 +23,20 @@ exports.addVoice=onCall({region:'asia-south1',maxInstances:30},async request=>{
  });
  return {ok:true,publicNameListed:showName};
 });
+exports.publishSupporterName=onCall({region:'asia-south1',maxInstances:20},async request=>{
+ if(!request.auth?.uid)throw new HttpsError('unauthenticated','Sign in again using the browser you signed from.');
+ const {name,consent}=request.data||{};
+ if(consent!==true)throw new HttpsError('invalid-argument','Public name display requires explicit consent.');
+ if(typeof name!=='string'||!name.trim()||name.trim().length>60)
+  throw new HttpsError('invalid-argument','Enter a name (up to 60 characters).');
+ const uid=request.auth.uid;
+ const signature=db.collection('signatures').doc(uid),light=db.collection('lights').doc(uid);
+ await db.runTransaction(async t=>{
+  const [sigSnap,lightSnap]=await Promise.all([t.get(signature),t.get(light)]);
+  if(!sigSnap.exists||!lightSnap.exists)
+   throw new HttpsError('failed-precondition','No signature found for this browser. Only existing signers can publish a name.');
+  t.update(signature,{showName:true,publicDisplayName:name.trim(),publicNameConsentAt:FieldValue.serverTimestamp()});
+  t.update(light,{displayName:name.trim()});
+ });
+ return {ok:true};
+});
