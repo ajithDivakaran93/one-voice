@@ -278,3 +278,6 @@
  .supporter-highlights{padding:22px 16px 29px}
  .supporter-highlights .latest-supporters{margin:0;padding:22px 20px}
 }
+
+/* Keep the longer Infopark Connectivity heading within narrow mobile layouts. */
+.manifesto h2 .connectivity-word{display:inline-block;font-size:.72em;letter-spacing:-.025em}
