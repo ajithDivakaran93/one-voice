@@ -332,6 +332,11 @@ $('submitSign').onclick=async()=>{
      id:uid,name:publicName||null,
      createdAt:{toMillis:()=>Date.now()},snapshot:null
     };
+    // Under a surge a new signature can leave the top-ten live window
+    // before its confirmation arrives. Don't pin it at the top forever.
+    setTimeout(()=>{
+     if(confirmedLocal?.id===uid){confirmedLocal=null;rebuildDirectory();}
+    },12000);
    }
    directoryLoaded=true;
    rebuildDirectory();
