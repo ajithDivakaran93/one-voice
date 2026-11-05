@@ -1,7 +1,8 @@
 import {firebaseConfig} from './firebase-config.js';
 const $=id=>document.getElementById(id);
 const canvas=$('signature'),context=canvas.getContext('2d');
-let ready=false,submitting=false,signed=false,points=[],active=null,auth,db,functions,httpsCallable;let recentSupporterIds=[],pendingOwnId=null,latestPublicNames=[];
+let ready=false,submitting=false,signed=false,points=[],active=null,auth,db,functions,httpsCallable;let recentSupporterIds=[],pendingOwnId=null;
+let storeApi=null,directoryRows=[],directoryCursor=null,directoryBusy=false,directoryDone=false;
 const message=(s)=>{$('status').textContent=s;};
 const getStrokeCount=()=>points.reduce((n,line)=>n+line.length,0);
 function redraw(){
@@ -52,7 +53,8 @@ function setDialog(node,show){
  if(show)requestAnimationFrame(()=>{if(node===$('modal'))resizeSignature();});
 }
 $('openSign').onclick=()=>{if(signed){setDialog($('success'),true);return;}setDialog($('modal'),true);};
-$('viewSupporters').onclick=()=>setDialog($('supportersModal'),true);
+$('viewSupporters').onclick=()=>{setDialog($('supportersModal'),true);loadSupporterPage(true);};
+$('moreSupporters').onclick=()=>loadSupporterPage(false);
 $('viewPetition').onclick=()=>setDialog($('petitionModal'),true);
 $('closeSupporters').onclick=()=>setDialog($('supportersModal'),false);
 $('closePetition').onclick=()=>setDialog($('petitionModal'),false);
@@ -81,16 +83,48 @@ function drawPeople(ids){
 function renderSupporters(){
  $('supporterTotal').textContent=$('count').textContent;
  const list=$('supporterNames');list.replaceChildren();
- if(!latestPublicNames.length){
-  const p=document.createElement('p');p.className='empty-supporters';
-  p.textContent='No public names yet. Supporters who have opted to share their names will appear here.';
-  list.append(p);return;
- }
  const ol=document.createElement('ol');ol.className='name-list';
- for(const name of latestPublicNames){
-   const li=document.createElement('li');li.textContent=name;ol.append(li);
+ directoryRows.forEach(item=>{
+   const li=document.createElement('li');
+   li.textContent=item.name||'Anonymous supporter';
+   if(!item.name)li.className='anonymous-entry';
+   ol.append(li);
+ });
+ if(directoryRows.length)list.append(ol);
+ else{
+  const p=document.createElement('p');p.className='empty-supporters';
+  p.textContent=directoryBusy?'Loading supporters…':'No signatures found yet.';
+  list.append(p);
  }
- list.append(ol);
+ const total=Number($('count').textContent.replace(/,/g,''))||0;
+ $('supporterShown').textContent=directoryRows.length.toLocaleString('en-IN')+' of '+(total?total.toLocaleString('en-IN'):'—')+' signatures displayed';
+ $('moreSupporters').hidden=directoryDone||directoryRows.length>=total||!directoryRows.length;
+ $('moreSupporters').disabled=directoryBusy;
+}
+async function loadSupporterPage(reset=false){
+ if(!storeApi||!db){
+  $('supporterNames').textContent='Connecting to the supporter list…';return;
+ }
+ if(directoryBusy)return;
+ if(reset){directoryRows=[];directoryCursor=null;directoryDone=false;}
+ if(directoryDone)return;
+ directoryBusy=true;renderSupporters();
+ try{
+  const order=storeApi.orderBy('createdAt','desc');
+  const terms=[order,storeApi.limit(60)];
+  if(directoryCursor)terms.push(storeApi.startAfter(directoryCursor));
+  const query=storeApi.query(storeApi.collection(db,'lights'),...terms);
+  const snap=await storeApi.getDocs(query);
+  directoryRows.push(...snap.docs.map(doc=>{
+   const name=doc.data().displayName;
+   return {name:typeof name==='string'&&name.trim()?name.trim():null};
+  }));
+  directoryCursor=snap.docs.at(-1)||directoryCursor;
+  directoryDone=snap.docs.length<60;
+ }catch(error){
+  console.error('Supporter pagination failed',error);
+  $('supporterShown').textContent='Unable to load supporters. Please retry.';
+ }finally{directoryBusy=false;renderSupporters();}
 }
 function updateCount(value){const shown=Number.isFinite(value)?value.toLocaleString('en-IN'):'—';$('count').textContent=shown;$('countMirror').textContent=shown;renderSupporters();}
 function showConnected(text){const status=document.getElementById('connectionStatus');if(status)status.textContent=text;}
@@ -180,6 +214,7 @@ async function init(){
   const app=appM.initializeApp(firebaseConfig);
   auth=authM.getAuth(app);
   db=storeM.getFirestore(app);
+  storeApi=storeM;
   functions=functionsM.getFunctions(app,'asia-south1');
   httpsCallable=functionsM.httpsCallable;
   await authM.signInAnonymously(auth);
@@ -190,8 +225,7 @@ async function init(){
   const q=storeM.query(storeM.collection(db,'lights'),storeM.orderBy('createdAt','desc'),storeM.limit(140));
   storeM.onSnapshot(q,snapshot=>{
     const ids=snapshot.docs.map(doc=>doc.id);
-    latestPublicNames=snapshot.docs.map(doc=>doc.data().displayName).filter(name=>typeof name==='string'&&name.trim().length>0).map(name=>name.trim());
-    renderSupporters();
+    if(!$('supportersModal').hidden && !directoryBusy)loadSupporterPage(true);
     // Once the server publishes the record, it no longer needs local priority.
     if(pendingOwnId && ids.includes(pendingOwnId)) pendingOwnId=null;
     drawPeople(ids);
@@ -199,7 +233,7 @@ async function init(){
     console.warn('Supporter display subscription failed',error);
     const notice=document.getElementById('voicesNotice');
     if(notice)notice.textContent='Supporter illustrations temporarily unavailable. Please refresh.';
-    const list=$('supporterNames');list.textContent='Supporter list unavailable. Please refresh.';
+    // The supporter directory fetches its own paginated records.
    });
  }catch(error){
   console.error('Firebase setup failed:',error);
