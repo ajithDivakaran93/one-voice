@@ -20,6 +20,7 @@ A Firebase-hosted road-safety petition with a private drawn-signature record, a 
 - Each successful `addVoice` call verifies an authenticated Firebase UID, validates a mandatory public name and drawn signature, and atomically creates one private `signatures/{uid}` record, one public `lights/{uid}` record, and increments exactly **one of 64** counter documents in `counterShards/{00..63}`.
 - The transaction checks `signatures/{uid}` for duplicates. Failed or retried submissions do not increment the counter again for the same UID.
 - **Historical count preservation:** Old signatures remain counted in `stats/campaign.count`, which becomes the **legacy baseline**. New signatures are counted only through the 64 shard documents. The displayed counter equals **legacy baseline + sum of shards**. Do not delete or reset `stats/campaign.count` during rollout.
+- Public visitors **do not create anonymous Firebase Auth accounts**. The browser authenticates only when someone submits a signature, reducing Authentication traffic and unused accounts during public surges.
 - The public page subscribes to the most recent **10** `lights` records for the names and roadside figures. **View All Supporters** subscribes to **60** records only while its popup is open; the rest are loaded through Firestore cursors in bounded pages.
 - The browser has an immediate server-acknowledged update for its own new signature. Other viewers receive live snapshots over Firestore; propagation latency depends on network and server load. Full signatures are never downloaded to the browser.
 
