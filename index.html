@@ -8,7 +8,7 @@
 <meta property="og:title" content="ONE VOICE | How many more?">
 <meta property="og:description" content="One life lost. One demand: safer roads. Raise your voice for Infopark.">
 <title>ONE VOICE · INFOPARK</title>
-<link rel="stylesheet" href="/style.css?v=20">
+<link rel="stylesheet" href="/style.css?v=21">
 </head>
 <body>
 <header class="site-header"><a class="brand" href="#top" aria-label="ONE VOICE, home"><span class="brand-signal"></span>ONE<span>VOICE</span></a><div class="header-total" aria-live="polite"><strong id="count">—</strong><span>REAL SIGNATURES</span><small class="count-goal">FIRST GOAL · 100</small></div></header>
@@ -70,7 +70,16 @@
   <p class="modal-intro">These are supporters who chose to share their names publicly. Other signatures remain anonymous.</p>
   <div class="supporter-summary"><strong id="supporterTotal">—</strong><span>TOTAL SIGNATURES</span></div>
   <div id="supporterNames" class="supporter-names" aria-live="polite"><p>Loading supporters…</p></div>
-  <p class="privacy-dark">Names are displayed only with explicit permission. Older private signatures are never revealed here.</p>
+  <div class="publish-name">
+  <h3>ALREADY SIGNED?</h3>
+  <p>Want your name to appear? Opt in using the same browser you signed from.</p>
+  <label for="publicName">NAME TO DISPLAY</label>
+  <input id="publicName" type="text" autocomplete="name" maxlength="60" placeholder="Your public name">
+  <label class="consent"><input type="checkbox" id="publicNameAgree"><span>I agree to show this name publicly in the ONE VOICE supporter list.</span></label>
+  <button type="button" id="publishMyName" class="publish-button">PUBLISH MY NAME ↗</button>
+  <p id="publishStatus" role="status" aria-live="polite"></p>
+ </div>
+ <p class="privacy-dark">Only explicitly approved names are displayed. Original handwritten signatures remain private. The directory shows recent opt-in names, not every supporter.</p>
  </div>
 </div>
 <div id="petitionModal" class="overlay info-overlay" hidden>
@@ -104,5 +113,5 @@
  </div>
 </div>
 <script src="/road-animation.js?v=20" defer></script>
-<script type="module" src="/main.js?v=20"></script>
+<script type="module" src="/main.js?v=21"></script>
 </body></html>
