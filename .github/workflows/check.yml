@@ -18,7 +18,10 @@ jobs:
           node --check main.js
           node --check road-animation.js
           node --check functions/index.js
+          node --check functions/counter-shards.js
           node --check firebase-config.js
+      - name: Verify 10,000-signature counter distribution
+        run: node --test functions/counter-shards.test.js
       - name: Validate main HTML elements
         run: |
           python3 - <<'PY'
