@@ -117,6 +117,7 @@ function rebuildDirectory(){
   return bt-at || a.id.localeCompare(b.id);
  });
  renderSupporters();
+ renderLatestSupporters();
 }
 function renderSupporters(){
  $('supporterTotal').textContent=$('count').textContent;
@@ -210,6 +211,17 @@ $('submitSign').onclick=async()=>{
   const result=await addVoice({name:$('signName').value.trim(),strokes,consent:true,showName:$('showName').checked});
   if($('showName').checked && result?.data?.publicNameListed!==true){
    $('success').querySelector('.success-toast-copy span').textContent='Signature saved. Public name listing needs the updated Cloud Function.';
+  }
+  // The callable has committed the signature. Show the public name without
+  // waiting for listener latency; the live snapshot will confirm it.
+  if(result?.data?.publicNameListed===true && auth?.currentUser?.uid){
+   const uid=auth.currentUser.uid;
+   if(!latestPageDocs.some(row=>row.id===uid)){
+    latestPageDocs=[{id:uid,name:$('signName').value.trim(),
+      createdAt:{toMillis:()=>Date.now()},snapshot:null},...latestPageDocs].slice(0,60);
+    directoryLoaded=true;
+    rebuildDirectory();
+   }
   }
   markSigned(true,result?.data?.publicNameListed===true?$('signName').value.trim():'');
  }catch(error){
