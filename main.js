@@ -44,7 +44,7 @@ for(const event of ['pointerup','pointercancel','lostpointercapture']){
 $('clearSign').onclick=()=>{points=[];active=null;$('hint').hidden=false;redraw();updateForm();};
 $('agree').addEventListener('change',updateForm);
 function setDialog(node,show){
- node.hidden=!show;document.body.style.overflow=(!$('modal').hidden||!$('success').hidden)?'hidden':'';
+ node.hidden=!show;document.body.style.overflow=!$('modal').hidden?'hidden':'';
  if(show)requestAnimationFrame(()=>{if(node===$('modal'))resizeSignature();});
 }
 $('openSign').onclick=()=>{if(signed){setDialog($('success'),true);return;}setDialog($('modal'),true);};
@@ -71,15 +71,17 @@ function drawPeople(ids){
 }
 function updateCount(value){const shown=Number.isFinite(value)?value.toLocaleString('en-IN'):'—';$('count').textContent=shown;$('countMirror').textContent=shown;}
 function showConnected(text){const status=document.getElementById('connectionStatus');if(status)status.textContent=text;}
-function markSigned(){
+function markSigned(animate=true){
  // The server confirmed the signature (or that this account already signed).
  // Display that person immediately while the public Firestore listener catches up.
  pendingOwnId=auth?.currentUser?.uid||null;
  drawPeople(recentSupporterIds);
  signed=true;sessionStorage.setItem('oneVoiceSigned','true');
- window.OneVoiceRoad?.celebrate();
+ if(animate && pendingOwnId)window.OneVoiceRoad?.celebrate(pendingOwnId);
  $('openSign').innerHTML='VOICE ADDED <span>✓</span>';
- setDialog($('modal'),false);setDialog($('success'),true);
+ setDialog($('modal'),false);
+ window.scrollTo({top:0,behavior:'instant'});
+ setDialog($('success'),true);
 }
 async function shareCampaign(){
  const url=location.origin+location.pathname;
@@ -106,7 +108,7 @@ $('submitSign').onclick=async()=>{
  }catch(error){
   console.error('Signature submission failed:',error);
   if(error.code==='functions/already-exists'){
-   markSigned();
+   markSigned(false);
   }else{
    const detail=error.code==='functions/not-found'?'Signature service is not deployed. An organizer must deploy Cloud Functions.':
     error.code==='functions/unauthenticated'?'Sign-in failed. Please reload the page.':
