@@ -7,14 +7,14 @@
  const scene=canvas.parentElement,ctx=canvas.getContext('2d',{alpha:false});
  if(!ctx)return;
  const reduce=matchMedia('(prefers-reduced-motion: reduce)');
- let w=1,h=1,dpr=1,frame=0,last=0,travel=0,ids=[],flashUntil=0;
+ let w=1,h=1,dpr=1,frame=0,last=0,travel=0,ids=[],entry=null;
  const hash=id=>{let n=2166136261;for(let i=0;i<id.length;i++){n^=id.charCodeAt(i);n=Math.imul(n,16777619);}return n>>>0;};
  const center=()=>w*.5;
  const horizon=()=>h*.36;
  const project=(depth)=>{const p=Math.pow(depth,1.7);return {p,y:horizon()+p*h*.83,half:w*(.018+p*.52)}};
  const poly=(points,color)=>{ctx.fillStyle=color;ctx.beginPath();points.forEach((a,i)=>i?ctx.lineTo(...a):ctx.moveTo(...a));ctx.closePath();ctx.fill();};
  const ellipse=(x,y,rx,ry,color)=>{ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,Math.max(.1,rx),Math.max(.1,ry),0,0,Math.PI*2);ctx.fill();};
- function person(x,y,scale,seed,t,side,highlight=false,symbolic=false){
+ function person(x,y,scale,seed,t,side,highlight=false,symbolic=false,arrival=1){
    // Readable human silhouette: separated head, shoulders, torso, two legs and
    // a raised fist. Slow animated fist lift is deliberately subtle.
    const mobile=w<700;
@@ -23,9 +23,10 @@
    const hipY=y-height*.34, torsoWidth=height*.23;
    const color=highlight?'#ffe3e6':(symbolic?'#ed3452':'#ff7189');
    const motion=reduce.matches?0:(.5+.5*Math.sin(t*1.8+seed*.19));
+   const protestMotion=highlight?1:motion;
    const sway=reduce.matches?0:Math.sin(t*.8+seed*.11)*height*.008;
    const limb=Math.max(2.2,height*.082);
-   ctx.save();ctx.globalAlpha=symbolic ? 0.76 : 1;
+   ctx.save();ctx.globalAlpha=(symbolic ? 0.76 : 1)*arrival;
    ctx.lineJoin='round';ctx.lineCap='round';
    const glow=ctx.createRadialGradient(x,shoulderY,0,x,shoulderY,height*.6);
    glow.addColorStop(0,symbolic?'#f9284b30':'#ff406977');
@@ -56,10 +57,10 @@
    // On the left of the road the right-facing arm lifts, mirrored on the right.
    const inward=-side;
    const shoulderX=x+inward*torsoWidth*.65;
-   const elbowX=x+inward*(height*.19+motion*height*.025);
-   const elbowY=shoulderY-height*(.015+motion*.10);
-   const fistX=x+inward*(height*.15+motion*height*.065);
-   const fistY=shoulderY-height*(.10+motion*.23);
+   const elbowX=x+inward*(height*.19+protestMotion*height*.025);
+   const elbowY=shoulderY-height*(.015+protestMotion*.10);
+   const fistX=x+inward*(height*.15+protestMotion*height*.065);
+   const fistY=shoulderY-height*(.10+protestMotion*.23);
    ctx.beginPath();ctx.moveTo(shoulderX,shoulderY+height*.02);
    ctx.lineTo(elbowX,elbowY);ctx.lineTo(fistX,fistY);
    ctx.stroke();
@@ -118,7 +119,7 @@
          const index=added*2+(side===-1?0:1);
          if(index>=ids.length)continue;
          const id=ids[index];
-         figures.push({x,y,z,scale:p,seed:hash(id),side,symbolic:false,highlight:index===0&&t<flashUntil});
+         figures.push({x,y,z,scale:p,seed:hash(id),side,symbolic:false,highlight:entry?.id===id&&t-entry.start<6,id});
          added++;
        }else{
          figures.push({x,y,z,scale:p,seed:slot*71+(side===-1?7:13),side,symbolic:true,highlight:false});
@@ -126,7 +127,32 @@
      }
    }
    figures.sort((a,b)=>a.y-b.y);
-   for(const item of figures)person(item.x,item.y,item.scale,item.seed,t,item.side,item.highlight,item.symbolic);
+   for(const item of figures){
+     let x=item.x,y=item.y,opacity=1;
+     if(item.highlight && entry){
+       const elapsed=Math.max(0,t-entry.start);
+       const progress=reduce.matches?1:clamp(elapsed/1.35,0,1);
+       const ease=1-Math.pow(1-progress,3);
+       x+=item.side*(mobile?34:58)*(1-ease);
+       y+=(mobile?38:58)*(1-ease);
+       opacity=Math.max(.2,ease);
+       const strength=Math.max(0,1-elapsed/5.5);
+       ctx.save();
+       // A soft spotlight from the person's feet, plus a pulsing ring.
+       ctx.globalAlpha=strength*.68;
+       const beam=ctx.createRadialGradient(x,y-item.scale*15,0,x,y-item.scale*15,mobile?65:100);
+       beam.addColorStop(0,'#ffbdce7a');beam.addColorStop(.26,'#ff355a49');beam.addColorStop(1,'#ff355a00');
+       ellipse(x,y-item.scale*15,mobile?65:100,mobile?85:110,beam);
+       if(!reduce.matches){
+         ctx.strokeStyle='#ffb2c8';ctx.lineWidth=2;
+         ctx.globalAlpha=strength*.65;
+         const radius=(mobile?16:23)+((elapsed*18)%(mobile?46:67));
+         ctx.beginPath();ctx.arc(x,y-item.scale*19,radius,0,Math.PI*2);ctx.stroke();
+       }
+       ctx.restore();
+     }
+     person(x,y,item.scale,item.seed,t,item.side,item.highlight,item.symbolic,opacity);
+   }
    // atmospheric foreground vignette
    const vignette=ctx.createLinearGradient(0,0,0,h);
    vignette.addColorStop(0,'#05050877');vignette.addColorStop(.25,'#05050827');
@@ -149,7 +175,7 @@
  const stop=()=>{if(frame)cancelAnimationFrame(frame);frame=0;};
  window.OneVoiceRoad={
    setSupporters(next){ids=Array.isArray(next)?next.slice(0,80):[];render(performance.now()/1000);},
-   celebrate(){flashUntil=performance.now()/1000+4;}
+   celebrate(id){if(typeof id!=='string'||!id)return;entry={id,start:performance.now()/1000};render(performance.now()/1000);}
  };
  window.addEventListener('resize',resize);
  document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
