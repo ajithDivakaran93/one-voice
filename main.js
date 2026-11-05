@@ -174,21 +174,26 @@ function startPopupListener(){
  const query=storeApi.query(storeApi.collection(db,'lights'),
   storeApi.orderBy('createdAt','desc'),storeApi.limit(60));
  stopPopupListener=storeApi.onSnapshot(query,snapshot=>{
-  const previousTail=popupPageDocs?.at(-1)?.id;
-  popupPageDocs=snapshot.docs.map(doc=>({
+  const previousPage=popupPageDocs||[];
+  const nextPage=snapshot.docs.map(doc=>({
    id:doc.id,createdAt:doc.data().createdAt,
    name:typeof doc.data().displayName==='string'&&doc.data().displayName.trim()?doc.data().displayName.trim():null,
    snapshot:doc
   }));
-  // The page boundary can shift as new signatures arrive. Re-page from
-  // the current cursor instead of skipping entries when the boundary shifts.
-  if(previousTail&&previousTail!==popupPageDocs.at(-1)?.id){
-   directoryRevision++;
-   olderPageDocs=[];
-   directoryCursor=null;
-   directoryDone=false;
+  // Preserve entries pushed off the first page by incoming signatures.
+  // Otherwise a viewer paging during heavy activity could miss names.
+  const nextIds=new Set(nextPage.map(row=>row.id));
+  const evicted=previousPage.filter(row=>!nextIds.has(row.id));
+  if(evicted.length){
+   const previous=new Map(olderPageDocs.map(row=>[row.id,row]));
+   evicted.forEach(row=>previous.set(row.id,row));
+   olderPageDocs=Array.from(previous.values()).sort((a,b)=>
+    (b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
   }
+  popupPageDocs=nextPage;
+  // A previously complete first page can become full as signers arrive.
   if(popupPageDocs.length<60)directoryDone=true;
+  else if(!directoryCursor)directoryDone=false;
   rebuildDirectory();
  },error=>{
   console.warn('Full supporter list listener failed',error);
@@ -214,7 +219,7 @@ async function loadSupporterPage(){
  const revision=directoryRevision;
  try{
   // Cursor is derived from the last loaded historic page, or the live page.
-  const cursor=directoryCursor || popupPageDocs.at(-1)?.snapshot;
+  const cursor=directoryCursor || olderPageDocs.at(-1)?.snapshot || popupPageDocs.at(-1)?.snapshot;
   if(!cursor){directoryDone=true;return;}
   const q=storeApi.query(storeApi.collection(db,'lights'),
     storeApi.orderBy('createdAt','desc'),storeApi.startAfter(cursor),storeApi.limit(60));
@@ -412,6 +417,7 @@ async function init(){
   });
   await authM.signInAnonymously(auth);
   ready=true;updateForm();
+  if(!$('supportersModal').hidden)startPopupListener();
  }catch(error){
   console.error('Firebase setup failed:',error);
   ready=false;updateForm();
