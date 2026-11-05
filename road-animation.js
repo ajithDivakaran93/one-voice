@@ -15,21 +15,15 @@
  const poly=(points,color)=>{ctx.fillStyle=color;ctx.beginPath();points.forEach((a,i)=>i?ctx.lineTo(...a):ctx.moveTo(...a));ctx.closePath();ctx.fill();};
  const ellipse=(x,y,rx,ry,color)=>{ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,Math.max(.1,rx),Math.max(.1,ry),0,0,Math.PI*2);ctx.fill();};
  function person(x,y,scale,seed,t,side,highlight=false,symbolic=false,arrival=1){
-   // Readable human silhouette: separated head, shoulders, torso, two legs and
-   // a raised fist. Slow animated fist lift is deliberately subtle.
+   // Stationary silhouette: only the inward fist raises and lowers.
    const mobile=w<700;
-   // Subtle march in place: two alternating steps with genuine limb movement.
-   const cycle=reduce.matches?0:Math.sin(t*3.8+seed*.013);
-   const step=cycle*0.13;
-   const bob=reduce.matches?0:Math.abs(Math.sin(t*3.8+seed*.013))*1.8;
-   y-=bob;
    const height=clamp(23+scale*(mobile?37:58),22,mobile?46:70);
    const head=height*.105, neck=y-height*.77, shoulderY=y-height*.70;
    const hipY=y-height*.34, torsoWidth=height*.23;
    const color=highlight?'#ffe3e6':(symbolic?'#ed3452':'#ff7189');
    const motion=reduce.matches?0:(.5+.5*Math.sin(t*1.8+seed*.19));
    const protestMotion=highlight?1:motion;
-   const sway=reduce.matches?0:Math.sin(t*.8+seed*.11)*height*.008;
+   const sway=0;
    const limb=Math.max(2.2,height*.082);
    ctx.save();ctx.globalAlpha=(symbolic ? 0.76 : 1)*arrival;
    ctx.lineJoin='round';ctx.lineCap='round';
@@ -38,20 +32,16 @@
    glow.addColorStop(1,'#f9284b00');
    ellipse(x,shoulderY,height*.6,height*.65,glow);
    ellipse(x,y,height*.16,height*.04,'#030306bb');
-   // A two-phase marching gait: alternate knees and feet rather than
-   // sliding a rigid stick figure up and down.
+   // Standing stance: legs and feet remain planted, while only the
+   // inward arm raises and lowers in protest.
    ctx.strokeStyle=color;ctx.lineWidth=limb;
    ctx.beginPath();
-   const leftKneeX=x-height*.07+step*height*.42;
-   const rightKneeX=x+height*.07-step*height*.42;
-   const leftKneeY=y-height*(.155+Math.max(0,cycle)*.035);
-   const rightKneeY=y-height*(.155+Math.max(0,-cycle)*.035);
    ctx.moveTo(x-torsoWidth*.2,hipY);
-   ctx.lineTo(leftKneeX,leftKneeY);
-   ctx.lineTo(x-height*.14+step*height*.8,y-Math.max(0,cycle)*height*.08);
+   ctx.lineTo(x-height*.075,y-height*.10);
+   ctx.lineTo(x-height*.14,y);
    ctx.moveTo(x+torsoWidth*.2,hipY);
-   ctx.lineTo(rightKneeX,rightKneeY);
-   ctx.lineTo(x+height*.14-step*height*.8,y-Math.max(0,-cycle)*height*.08);
+   ctx.lineTo(x+height*.075,y-height*.10);
+   ctx.lineTo(x+height*.14,y);
    ctx.stroke();
    // Solid jacket / shoulders and narrow waist.
    poly([[x-torsoWidth*.67+sway,shoulderY],
@@ -61,7 +51,7 @@
    // Outer arm down and slightly out.
    ctx.beginPath();
    ctx.moveTo(x+side*torsoWidth*.68,shoulderY+height*.02);
-   ctx.lineTo(x+side*(height*.20+step*height*.28),y-height*(.43+Math.max(0,-cycle)*.06));
+   ctx.lineTo(x+side*height*.20,y-height*.43);
    ctx.stroke();
    // Inner arm raises a clenched fist: elbow and hand have distinct positions.
    // On the left of the road the right-facing arm lifts, mirrored on the right.
@@ -143,8 +133,7 @@
        }
      }
    }
-   // When the entry would otherwise be out of the visible recent-slot range,
-   // show it in a temporary foreground slot until the highlight finishes.
+   // New signer is spotlighted in a prominent stationary foreground slot.
    if(entry && t-entry.start<6){
      const p=.46,z=Math.pow(p,1/1.7),side=-1;
      const x=clamp(mid-(project(z).half+(mobile?9:14)),mobile?29:40,w-(mobile?29:40));
@@ -155,12 +144,8 @@
      let x=item.x,y=item.y,opacity=1;
      if(item.highlight && entry){
        const elapsed=Math.max(0,t-entry.start);
-       const progress=reduce.matches?1:clamp(elapsed/1.35,0,1);
-       const ease=1-Math.pow(1-progress,3);
-       x+=item.side*(mobile?58:90)*(1-ease);
-       x+=(reduce.matches?0:Math.sin(elapsed*10)*Math.min(4,(1-ease)*7));
-       y+=(mobile?38:58)*(1-ease);
-       opacity=Math.max(.2,ease);
+       // New signers appear already standing in their place. Highlight
+       // without sliding, walking or moving their body.
        const strength=Math.max(0,1-elapsed/5.5);
        ctx.save();
        // A soft spotlight from the person's feet, plus a pulsing ring.
