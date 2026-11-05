@@ -245,12 +245,11 @@ $('submitSign').onclick=async()=>{
   const uid=auth?.currentUser?.uid||null;
   const publicName=result?.data?.publicNameListed===true?$('signName').value.trim():'';
   if(uid){
-   if(!liveRecentIds.has(uid)){
-    // A confirmed increment is a minimum. Later server totals can increase
-    // it, but older cached totals cannot make it visibly jump backwards.
-    if(countBeforeSubmission!==null)
-     pendingCountFloor=Math.max(pendingCountFloor??0,countBeforeSubmission+1);
-   }
+   // The names and counter travel on independent listeners. Advance the
+   // displayed total at acknowledgment even if the name arrived first.
+   // Never add another +1 if the server already reported this increment.
+   if(countBeforeSubmission!==null)
+    pendingCountFloor=Math.max(pendingCountFloor??0,countBeforeSubmission+1);
    if(!latestPageDocs.some(row=>row.id===uid)){
     confirmedLocal={
      id:uid,name:publicName||null,
