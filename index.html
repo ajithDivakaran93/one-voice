@@ -8,7 +8,7 @@
 <meta property="og:title" content="ONE VOICE | How many more?">
 <meta property="og:description" content="One life lost. One demand: safer roads. Raise your voice for Infopark.">
 <title>ONE VOICE · INFOPARK</title>
-<link rel="stylesheet" href="/style.css?v=17">
+<link rel="stylesheet" href="/style.css?v=18">
 </head>
 <body>
 <header class="site-header"><a class="brand" href="#top" aria-label="ONE VOICE, home"><span class="brand-signal"></span>ONE<span>VOICE</span></a><div class="header-total" aria-live="polite"><strong id="count">—</strong><span>REAL SIGNATURES</span><small class="count-goal">FIRST GOAL · 100</small></div></header>
@@ -60,17 +60,17 @@
   <button id="submitSign" class="cta submit" type="button">STAND WITH US <span>↗</span></button>
  </div>
 </div>
-<div id="success" class="overlay" hidden>
- <div class="dialog success-dialog" role="dialog" aria-modal="true" aria-labelledby="successTitle">
-  <button id="closeSuccess" type="button" class="close" aria-label="Close confirmation">×</button>
-  <span class="success-person" aria-hidden="true">●</span>
-  <div class="section-kicker">YOUR VOICE IS COUNTED</div>
-  <h2 id="successTitle">ANOTHER<br><em>PERSON STANDS.</em></h2>
-  <p>Your signature has been saved. Help more people stand for safer roads.</p>
-  <button id="share" class="cta" type="button">SHARE ONE VOICE <span>↗</span></button>
-  <button id="done" class="text-button" type="button">BACK TO THE ROAD</button>
+<div id="success" class="success-toast" hidden role="status" aria-live="polite">
+ <div class="success-toast-inner">
+  <div class="success-toast-icon" aria-hidden="true">✓</div>
+  <div class="success-toast-copy"><strong>YOU'RE ON THE ROAD.</strong><span>Your voice has joined the protest.</span></div>
+  <button id="closeSuccess" type="button" class="toast-dismiss" aria-label="Dismiss confirmation">×</button>
+ </div>
+ <div class="success-toast-actions">
+  <button id="share" type="button">SHARE THE CAMPAIGN ↗</button>
+  <button id="done" type="button">KEEP WATCHING</button>
  </div>
 </div>
-<script src="/road-animation.js?v=17" defer></script>
-<script type="module" src="/main.js?v=12"></script>
+<script src="/road-animation.js?v=18" defer></script>
+<script type="module" src="/main.js?v=18"></script>
 </body></html>
