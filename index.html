@@ -8,7 +8,7 @@
 <meta property="og:title" content="ONE VOICE | How many more?">
 <meta property="og:description" content="One life lost. One demand: safer roads. Raise your voice for Infopark.">
 <title>ONE VOICE · INFOPARK</title>
-<link rel="stylesheet" href="/style.css?v=18">
+<link rel="stylesheet" href="/style.css?v=19">
 </head>
 <body>
 <header class="site-header"><a class="brand" href="#top" aria-label="ONE VOICE, home"><span class="brand-signal"></span>ONE<span>VOICE</span></a><div class="header-total" aria-live="polite"><strong id="count">—</strong><span>REAL SIGNATURES</span><small class="count-goal">FIRST GOAL · 100</small></div></header>
@@ -43,6 +43,7 @@
 <div class="action-dock" id="actionDock">
   <div class="dock-inner">
     <button class="cta" type="button" id="openSign">ADD YOUR VOICE <span>↗</span></button>
+    <nav class="dock-links" aria-label="Campaign information"><button type="button" id="viewSupporters">VIEW SUPPORTERS <span>↗</span></button><span aria-hidden="true">·</span><button type="button" id="viewPetition">READ THE PETITION <span>↗</span></button></nav>
   </div>
 </div>
 <div id="modal" class="overlay" hidden>
@@ -53,11 +54,42 @@
   <p class="modal-intro">Your signature adds one more person standing for safer roads.</p>
   <label class="field-label" for="signName">YOUR NAME <small>(OPTIONAL)</small></label>
   <input id="signName" maxlength="60" autocomplete="name" placeholder="Your name" />
+  <label class="consent public-name"><input id="showName" type="checkbox"/><span>Show my name on the public supporters list <strong>(optional)</strong>. Leave unchecked to remain anonymous.</span></label>
   <div class="siglabel"><label class="field-label" for="signature">YOUR SIGNATURE</label><button id="clearSign" type="button" class="text-button">CLEAR</button></div>
   <div class="canvaswrap"><canvas id="signature" aria-label="Draw your signature using your finger or mouse"></canvas><span id="hint">SIGN HERE WITH YOUR FINGER</span></div>
   <label class="consent"><input id="agree" type="checkbox"/><span>I support safer roads around Infopark and consent to this signature being stored privately for the campaign.</span></label>
   <p id="status" role="status" aria-live="polite">Draw your signature, then agree to continue.</p>
   <button id="submitSign" class="cta submit" type="button">STAND WITH US <span>↗</span></button>
+ </div>
+</div>
+<div id="supportersModal" class="overlay info-overlay" hidden>
+ <div class="dialog info-dialog" role="dialog" aria-modal="true" aria-labelledby="supportersTitle">
+  <button id="closeSupporters" class="close" type="button" aria-label="Close supporter list">×</button>
+  <div class="section-kicker">A COMMUNITY STANDING TOGETHER</div>
+  <h2 id="supportersTitle">OUR <em>VOICES.</em></h2>
+  <p class="modal-intro">These are supporters who chose to share their names publicly. Other signatures remain anonymous.</p>
+  <div class="supporter-summary"><strong id="supporterTotal">—</strong><span>TOTAL SIGNATURES</span></div>
+  <div id="supporterNames" class="supporter-names" aria-live="polite"><p>Loading supporters…</p></div>
+  <p class="privacy-dark">Names are displayed only with explicit permission. Older private signatures are never revealed here.</p>
+ </div>
+</div>
+<div id="petitionModal" class="overlay info-overlay" hidden>
+ <div class="dialog info-dialog petition-dialog" role="dialog" aria-modal="true" aria-labelledby="petitionTitle">
+  <button id="closePetition" class="close" type="button" aria-label="Close petition">×</button>
+  <div class="section-kicker">ONE VOICE · INFOPARK, KOCHI</div>
+  <h2 id="petitionTitle">ROADS FOR<br><em>PEOPLE.</em></h2>
+  <div class="petition-status">DRAFT PETITION · ORGANIZER CONTENT TO FOLLOW</div>
+  <p class="petition-lead">Every person should be able to walk to work and return home safely.</p>
+  <p>We, the undersigned supporters of ONE VOICE, call on the responsible public authorities, road agencies, traffic enforcement bodies and transport operators to take urgent, measurable action to protect pedestrians in the Infopark–Kakkanad area.</p>
+  <h3>WE CALL FOR</h3>
+  <ol>
+   <li><strong>Safe pedestrian access.</strong> Repair and protect continuous footpaths, remove dangerous obstructions and provide usable crossing points.</li>
+   <li><strong>Responsible bus operations.</strong> Enforce speed limits, dangerous-driving penalties and safe stopping practices.</li>
+   <li><strong>Engineering fixes.</strong> Audit high-risk junctions and walking routes, publish remedial actions and implement visible safety improvements.</li>
+   <li><strong>Public accountability.</strong> Publish a time-bound action plan with regular progress updates.</li>
+  </ol>
+  <p class="petition-footnote">This is working campaign wording, not an official filed petition. Organizers will replace it with the approved text.</p>
+  <button type="button" id="petitionSign" class="cta">ADD YOUR VOICE <span>↗</span></button>
  </div>
 </div>
 <div id="success" class="success-toast" hidden role="status" aria-live="polite">
@@ -71,6 +103,6 @@
   <button id="done" type="button">KEEP WATCHING</button>
  </div>
 </div>
-<script src="/road-animation.js?v=18" defer></script>
-<script type="module" src="/main.js?v=18"></script>
+<script src="/road-animation.js?v=19" defer></script>
+<script type="module" src="/main.js?v=19"></script>
 </body></html>
