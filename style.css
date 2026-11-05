@@ -194,3 +194,29 @@
  .header-total strong{font-size:clamp(30px,8vw,37px)}
  .header-total span{font-size:9px;letter-spacing:1px}
 }
+
+/* V29: on-page live latest-ten supporter leaderboard */
+.latest-supporters{margin:44px 0 34px;padding:30px clamp(20px,3.6vw,44px);border:1px solid #ff4c6342;border-radius:8px;background:linear-gradient(150deg,#1c1018 0%,#101015 65%,#0b0c10);box-shadow:0 20px 70px #0004}
+.latest-supporters-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:21px}
+.latest-supporters-heading .section-kicker{font-size:10px}
+.latest-supporters-heading h3{margin:9px 0 0;font-family:Impact,'Arial Narrow',Arial,sans-serif;font-weight:900;font-size:clamp(29px,4.5vw,52px);line-height:1;letter-spacing:.015em}
+.latest-supporters-heading h3 em{font-style:normal;color:#ff435e}
+.latest-live{display:inline-flex;align-items:center;gap:7px;color:#ff91a4;font-size:10px;letter-spacing:1.5px;font-weight:900}
+.latest-live>span{display:block;width:7px;height:7px;background:#ff3c58;border-radius:50%;box-shadow:0 0 12px #ff3c58;animation:beacon 2s infinite}
+.latest-supporters-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;counter-reset:none}
+.latest-supporters-list li{display:flex;align-items:center;min-width:0;gap:15px;padding:14px 3px;border-bottom:1px solid #ffffff1c;color:#f6f0f1;font-size:14px;font-weight:750}
+.latest-supporters-list .latest-number{flex:none;font-size:11px;color:#ff637b;letter-spacing:1px;font-weight:900}
+.latest-supporters-list .latest-name{overflow-wrap:anywhere}
+.latest-supporters-list .anonymous-entry .latest-name{color:#a69ba1;font-weight:500;font-style:italic}
+.latest-supporters-list .latest-placeholder{grid-column:1/-1;color:#b8aab1;font-size:13px;font-weight:500}
+.latest-view-all{width:100%;display:flex;align-items:center;justify-content:space-between;margin-top:24px;padding:14px 2px 6px;border:0;border-top:1px solid #ff5b784b;background:transparent;color:#fff;font-size:12px;font-weight:900;letter-spacing:1.8px;text-align:left}
+.latest-view-all span{color:#ff5772;font-size:21px}
+@media(max-width:700px){
+ .latest-supporters{margin:28px 0 24px;padding:22px 20px;border-radius:6px}
+ .latest-supporters-heading{align-items:flex-start}
+ .latest-supporters-heading h3{font-size:clamp(28px,8vw,39px)}
+ .latest-supporters-list{grid-template-columns:minmax(0,1fr)}
+ .latest-supporters-list li{padding:12px 2px;font-size:13px}
+ .latest-supporters-list .latest-placeholder{font-size:12px}
+ .latest-view-all{font-size:11px;letter-spacing:1.25px}
+}
