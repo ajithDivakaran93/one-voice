@@ -4,6 +4,16 @@ const canvas=$('signature'),context=canvas.getContext('2d');
 let ready=false,submitting=false,signed=false,points=[],active=null,auth,db,functions,httpsCallable;let recentSupporterIds=[],pendingOwnId=null,pendingOwnName='',publicNamesById=new Map();
 let storeApi=null,directoryRows=[],directoryCursor=null,directoryBusy=false,directoryDone=false,directoryError='',directoryLoaded=false;
 let latestPageDocs=[],olderPageDocs=[],directoryRevision=0;
+// Server-confirmed submissions stay in a local reconciliation layer until
+// Firestore delivers both the directory row and its separate stats snapshot.
+let confirmedLocal=null,serverCount=null,pendingCountFloor=null;
+const liveRecentIds=new Set();
+function visibleRecentRows(){
+ const rows=latestPageDocs.slice();
+ if(confirmedLocal&&!rows.some(row=>row.id===confirmedLocal.id))
+   rows.unshift(confirmedLocal);
+ return rows.slice(0,60);
+}
 const message=(s)=>{$('status').textContent=s;};
 const getStrokeCount=()=>points.reduce((n,line)=>n+line.length,0);
 function redraw(){
@@ -88,7 +98,7 @@ function renderLatestSupporters(){
  const list=$('latestSupporters');
  if(!list)return;
  list.replaceChildren();
- const recent=latestPageDocs.slice(0,10);
+ const recent=visibleRecentRows().slice(0,10);
  if(!recent.length){
   const li=document.createElement('li');
   li.className='latest-placeholder';
@@ -111,7 +121,7 @@ function renderLatestSupporters(){
 }
 function rebuildDirectory(){
  const byId=new Map();
- for(const doc of [...olderPageDocs,...latestPageDocs])byId.set(doc.id,doc);
+ for(const doc of [...olderPageDocs,...latestPageDocs,...(confirmedLocal?[confirmedLocal]:[])])byId.set(doc.id,doc);
  directoryRows=Array.from(byId.values()).sort((a,b)=>{
   const at=a.createdAt?.toMillis?.()||0,bt=b.createdAt?.toMillis?.()||0;
   return bt-at || a.id.localeCompare(b.id);
@@ -171,7 +181,22 @@ async function loadSupporterPage(){
   directoryError='Older supporters could not be loaded. Please try again.';
  }finally{directoryBusy=false;renderSupporters();}
 }
-function updateCount(value){const shown=Number.isFinite(value)?value.toLocaleString('en-IN'):'—';$('count').textContent=shown;$('countMirror').textContent=shown;renderSupporters();}
+function updateCount(value){
+ serverCount=Number.isFinite(value)?value:null;
+ // The server may deliver the counter later than the committed signature
+ // response. Never let a stale snapshot undo a server-confirmed increment.
+ if(pendingCountFloor!==null&&serverCount!==null&&serverCount>=pendingCountFloor)
+   pendingCountFloor=null;
+ renderConfirmedCount();
+}
+function renderConfirmedCount(){
+ const n=serverCount===null?pendingCountFloor:
+   pendingCountFloor===null?serverCount:Math.max(serverCount,pendingCountFloor);
+ const shown=n===null?'—':n.toLocaleString('en-IN');
+ $('count').textContent=shown;
+ $('countMirror').textContent=shown;
+ renderSupporters();
+}
 function showConnected(text){const status=document.getElementById('connectionStatus');if(status)status.textContent=text;}
 function markSigned(animate=true,publicName=''){
  // The server confirmed the signature (or that this account already signed).
@@ -203,6 +228,8 @@ $('submitSign').onclick=async()=>{
  if(!points.length){message('Please draw your signature first.');return;}
  if(!$('agree').checked){message('Please accept the consent checkbox.');return;}
  if(!$('showName').checked){message('To sign, please agree to display your name on the public supporters list.');return;}
+ // Capture the last verified counter before the callable round trip.
+ const countBeforeSubmission=serverCount;
  submitting=true;updateForm();$('submitSign').innerHTML='SAVING YOUR VOICE…';
  message('Submitting securely. Do not close the page.');
  try{
@@ -212,18 +239,29 @@ $('submitSign').onclick=async()=>{
   if($('showName').checked && result?.data?.publicNameListed!==true){
    $('success').querySelector('.success-toast-copy span').textContent='Signature saved. Public name listing needs the updated Cloud Function.';
   }
-  // The callable has committed the signature. Show the public name without
-  // waiting for listener latency; the live snapshot will confirm it.
-  if(result?.data?.publicNameListed===true && auth?.currentUser?.uid){
-   const uid=auth.currentUser.uid;
-   if(!latestPageDocs.some(row=>row.id===uid)){
-    latestPageDocs=[{id:uid,name:$('signName').value.trim(),
-      createdAt:{toMillis:()=>Date.now()},snapshot:null},...latestPageDocs].slice(0,60);
-    directoryLoaded=true;
-    rebuildDirectory();
+  // The callable has committed all three server writes. Update the local
+  // count and both name lists in the same turn, without waiting for either
+  // independent Firestore listener or inventing an unconfirmed signature.
+  const uid=auth?.currentUser?.uid||null;
+  const publicName=result?.data?.publicNameListed===true?$('signName').value.trim():'';
+  if(uid){
+   if(!liveRecentIds.has(uid)){
+    // A confirmed increment is a minimum. Later server totals can increase
+    // it, but older cached totals cannot make it visibly jump backwards.
+    if(countBeforeSubmission!==null)
+     pendingCountFloor=Math.max(pendingCountFloor??0,countBeforeSubmission+1);
    }
+   if(!latestPageDocs.some(row=>row.id===uid)){
+    confirmedLocal={
+     id:uid,name:publicName||null,
+     createdAt:{toMillis:()=>Date.now()},snapshot:null
+    };
+   }
+   directoryLoaded=true;
+   rebuildDirectory();
+   renderConfirmedCount();
   }
-  markSigned(true,result?.data?.publicNameListed===true?$('signName').value.trim():'');
+  markSigned(true,publicName);
  }catch(error){
   console.error('Signature submission failed:',error);
   if(error.code==='functions/already-exists'){
@@ -268,6 +306,8 @@ async function init(){
   const recentQuery=storeM.query(lightsRef,storeM.orderBy('createdAt','desc'),storeM.limit(140));
   storeM.onSnapshot(recentQuery,snapshot=>{
     const ids=snapshot.docs.map(doc=>doc.id);
+    liveRecentIds.clear();
+    ids.forEach(id=>liveRecentIds.add(id));
     publicNamesById=new Map(snapshot.docs.map(doc=>[doc.id,typeof doc.data().displayName==='string'?doc.data().displayName.trim():'']).filter(([,name])=>!!name));
     if(pendingOwnId && ids.includes(pendingOwnId)){
       pendingOwnId=null;pendingOwnName='';
@@ -286,8 +326,12 @@ async function init(){
       name:typeof doc.data().displayName==='string'&&doc.data().displayName.trim()?doc.data().displayName.trim():null,
       snapshot:doc
     }));
-    // Any historic pages already fetched remain intact; the newest changes
-    // appear at the top without losing the visitor's pagination progress.
+    // Once the saved row is present, the live snapshot replaces the local
+    // confirmation. Keep the local row until that exact ID is observed.
+    if(confirmedLocal&&latestPageDocs.some(row=>row.id===confirmedLocal.id))
+     confirmedLocal=null;
+    // Historic pages remain intact and the newest row is refreshed in both
+    // the main-page preview and the full supporter directory.
     rebuildDirectory();
   },error=>{
     console.warn('Live supporter directory failed',error);
