@@ -18,7 +18,11 @@
    // Readable human silhouette: separated head, shoulders, torso, two legs and
    // a raised fist. Slow animated fist lift is deliberately subtle.
    const mobile=w<700;
-   if(!reduce.matches) y+=Math.sin(t*2.3+seed*.013)*Math.min(2.6,1.3+scale*2);
+   // Subtle march in place: two alternating steps with genuine limb movement.
+   const cycle=reduce.matches?0:Math.sin(t*3.8+seed*.013);
+   const step=cycle*0.13;
+   const bob=reduce.matches?0:Math.abs(Math.sin(t*3.8+seed*.013))*1.8;
+   y-=bob;
    const height=clamp(23+scale*(mobile?37:58),22,mobile?46:70);
    const head=height*.105, neck=y-height*.77, shoulderY=y-height*.70;
    const hipY=y-height*.34, torsoWidth=height*.23;
@@ -34,15 +38,20 @@
    glow.addColorStop(1,'#f9284b00');
    ellipse(x,shoulderY,height*.6,height*.65,glow);
    ellipse(x,y,height*.16,height*.04,'#030306bb');
-   // Two legs extend below a distinct waist, with feet visibly separated.
+   // A two-phase marching gait: alternate knees and feet rather than
+   // sliding a rigid stick figure up and down.
    ctx.strokeStyle=color;ctx.lineWidth=limb;
    ctx.beginPath();
+   const leftKneeX=x-height*.07+step*height*.42;
+   const rightKneeX=x+height*.07-step*height*.42;
+   const leftKneeY=y-height*(.155+Math.max(0,cycle)*.035);
+   const rightKneeY=y-height*(.155+Math.max(0,-cycle)*.035);
    ctx.moveTo(x-torsoWidth*.2,hipY);
-   ctx.lineTo(x-height*.09,y-height*.075);
-   ctx.lineTo(x-height*.15,y);
+   ctx.lineTo(leftKneeX,leftKneeY);
+   ctx.lineTo(x-height*.14+step*height*.8,y-Math.max(0,cycle)*height*.08);
    ctx.moveTo(x+torsoWidth*.2,hipY);
-   ctx.lineTo(x+height*.09,y-height*.075);
-   ctx.lineTo(x+height*.16,y);
+   ctx.lineTo(rightKneeX,rightKneeY);
+   ctx.lineTo(x+height*.14-step*height*.8,y-Math.max(0,-cycle)*height*.08);
    ctx.stroke();
    // Solid jacket / shoulders and narrow waist.
    poly([[x-torsoWidth*.67+sway,shoulderY],
@@ -52,7 +61,7 @@
    // Outer arm down and slightly out.
    ctx.beginPath();
    ctx.moveTo(x+side*torsoWidth*.68,shoulderY+height*.02);
-   ctx.lineTo(x+side*height*.20,y-height*.43);
+   ctx.lineTo(x+side*(height*.20+step*height*.28),y-height*(.43+Math.max(0,-cycle)*.06));
    ctx.stroke();
    // Inner arm raises a clenched fist: elbow and hand have distinct positions.
    // On the left of the road the right-facing arm lifts, mirrored on the right.
@@ -148,7 +157,8 @@
        const elapsed=Math.max(0,t-entry.start);
        const progress=reduce.matches?1:clamp(elapsed/1.35,0,1);
        const ease=1-Math.pow(1-progress,3);
-       x+=item.side*(mobile?34:58)*(1-ease);
+       x+=item.side*(mobile?58:90)*(1-ease);
+       x+=(reduce.matches?0:Math.sin(elapsed*10)*Math.min(4,(1-ease)*7));
        y+=(mobile?38:58)*(1-ease);
        opacity=Math.max(.2,ease);
        const strength=Math.max(0,1-elapsed/5.5);
