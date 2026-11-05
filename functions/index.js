@@ -1,7 +1,12 @@
 const {onCall,HttpsError}=require('firebase-functions/v2/https');
 const {initializeApp}=require('firebase-admin/app');
+const {createHash}=require('node:crypto');
 const {getFirestore,FieldValue}=require('firebase-admin/firestore');
 initializeApp(); const db=getFirestore();
+// Multiple independently writable counter documents eliminate contention on
+// the legacy stats/campaign document as the campaign grows.
+const COUNTER_SHARDS=64;
+const shardForUid=uid=>createHash('sha256').update(uid).digest().readUInt16BE(0)%COUNTER_SHARDS;
 exports.addVoice=onCall({region:'asia-south1',maxInstances:30},async request=>{
  if(!request.auth?.uid)throw new HttpsError('unauthenticated','Please reload and try again.');
  const {name='',strokes,consent,showName=false}=request.data||{};
@@ -13,12 +18,15 @@ exports.addVoice=onCall({region:'asia-south1',maxInstances:30},async request=>{
  for(const line of strokes){if(!Array.isArray(line)||line.length<1||line.length>400)throw new HttpsError('invalid-argument','Invalid stroke.');for(const pt of line){total++;if(!Array.isArray(pt)||pt.length!==2||pt.some(v=>typeof v!=='number'||!Number.isFinite(v)||v<0||v>1))throw new HttpsError('invalid-argument','Invalid signature coordinate.');}}
  if(total>400)throw new HttpsError('invalid-argument','Signature too large.');
  const uid=request.auth.uid;
- const signature=db.collection('signatures').doc(uid),light=db.collection('lights').doc(uid),stats=db.collection('stats').doc('campaign');
+ const signature=db.collection('signatures').doc(uid),light=db.collection('lights').doc(uid);
+ const shard=db.collection('counterShards').doc(String(shardForUid(uid)).padStart(2,'0'));
  await db.runTransaction(async t=>{
   if((await t.get(signature)).exists)throw new HttpsError('already-exists','This account already signed.');
   t.create(signature,{name:name.trim(),strokes,consent:true,showName:true,consentVersion:'2026-11-v3',createdAt:FieldValue.serverTimestamp()});
   t.create(light,{createdAt:FieldValue.serverTimestamp(),...(showName?{displayName:name.trim()}: {})});
-  t.set(stats,{count:FieldValue.increment(1),updatedAt:FieldValue.serverTimestamp()},{merge:true});
+  // Legacy signatures remain counted in stats/campaign. All new signatures
+  // contribute exactly once to a counter shard within this same transaction.
+  t.set(shard,{count:FieldValue.increment(1)},{merge:true});
  });
  return {ok:true,publicNameListed:showName};
 });
