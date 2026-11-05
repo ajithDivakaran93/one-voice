@@ -119,8 +119,12 @@
          const index=added*2+(side===-1?0:1);
          if(index<ids.length){
            const id=ids[index];
-           figures.push({x,y,z,scale:p,seed:hash(id),side,symbolic:false,highlight:entry?.id===id&&t-entry.start<6,id});
-           added++;continue;
+           added++;
+           // During the entry celebration the new signer gets a single,
+           // unobstructed foreground position, not a duplicate behind text.
+           if(entry?.id===id&&t-entry.start<6)continue;
+           figures.push({x,y,z,scale:p,seed:hash(id),side,symbolic:false,highlight:false,id});
+           continue;
          }
        }
        // Only populate a sparse symbolic line: every other slot and the
@@ -132,10 +136,10 @@
    }
    // When the entry would otherwise be out of the visible recent-slot range,
    // show it in a temporary foreground slot until the highlight finishes.
-   if(entry && t-entry.start<6 && !figures.some(f=>f.id===entry.id)){
-     const p=.57,z=Math.pow(p,1/1.7),side=-1;
+   if(entry && t-entry.start<6){
+     const p=.46,z=Math.pow(p,1/1.7),side=-1;
      const x=clamp(mid-(project(z).half+(mobile?9:14)),mobile?29:40,w-(mobile?29:40));
-     figures.push({x,y:h*.83,z,scale:p,seed:hash(entry.id),side,symbolic:false,highlight:true,id:entry.id});
+     figures.push({x,y:h*.71,z,scale:p,seed:hash(entry.id),side,symbolic:false,highlight:true,id:entry.id});
    }
    figures.sort((a,b)=>a.y-b.y);
    for(const item of figures){
