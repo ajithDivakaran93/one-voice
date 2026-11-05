@@ -8,7 +8,7 @@
 <meta property="og:title" content="ONE VOICE | How many more?">
 <meta property="og:description" content="One life lost. One demand: safer roads. Raise your voice for Infopark.">
 <title>ONE VOICE · INFOPARK</title>
-<link rel="stylesheet" href="/style.css?v=22">
+<link rel="stylesheet" href="/style.css?v=23">
 </head>
 <body>
 <header class="site-header"><a class="brand" href="#top" aria-label="ONE VOICE, home"><span class="brand-signal"></span>ONE<span>VOICE</span></a><div class="header-total" aria-live="polite"><strong id="count">—</strong><span>REAL SIGNATURES</span><small class="count-goal">FIRST GOAL · 100</small></div></header>
@@ -52,9 +52,9 @@
   <div class="section-kicker">ONE SIGNATURE. ONE PERSON STANDING UP.</div>
   <h2 id="dialogTitle">TAKE A <em>STAND.</em></h2>
   <p class="modal-intro">Your signature adds one more person standing for safer roads.</p>
-  <label class="field-label" for="signName">YOUR NAME <small>(OPTIONAL)</small></label>
-  <input id="signName" maxlength="60" autocomplete="name" placeholder="Your name" />
-  <label class="consent public-name"><input id="showName" type="checkbox"/><span>Show my name on the public supporters list <strong>(optional)</strong>. Leave unchecked to remain anonymous.</span></label>
+  <label class="field-label" for="signName">YOUR FULL NAME <small>(REQUIRED)</small></label>
+  <input id="signName" maxlength="60" autocomplete="name" placeholder="Enter your full name" required />
+  <label class="consent public-name"><input id="showName" type="checkbox" required/><span>I agree to display my name publicly in the ONE VOICE supporters list. <strong>Required to sign.</strong> My handwritten signature remains private.</span></label>
   <div class="siglabel"><label class="field-label" for="signature">YOUR SIGNATURE</label><button id="clearSign" type="button" class="text-button">CLEAR</button></div>
   <div class="canvaswrap"><canvas id="signature" aria-label="Draw your signature using your finger or mouse"></canvas><span id="hint">SIGN HERE WITH YOUR FINGER</span></div>
   <label class="consent"><input id="agree" type="checkbox"/><span>I support safer roads around Infopark and consent to this signature being stored privately for the campaign.</span></label>
@@ -67,7 +67,7 @@
   <button id="closeSupporters" class="close" type="button" aria-label="Close supporter list">×</button>
   <div class="section-kicker">A COMMUNITY STANDING TOGETHER</div>
   <h2 id="supportersTitle">OUR <em>VOICES.</em></h2>
-  <p class="modal-intro">These are supporters who chose to share their names publicly. Other signatures remain anonymous.</p>
+  <p class="modal-intro">These are the names of supporters who gave permission to be listed publicly. Earlier signatures stay private until their signers opt in.</p>
   <div class="supporter-summary"><strong id="supporterTotal">—</strong><span>TOTAL SIGNATURES</span></div>
   <div id="supporterNames" class="supporter-names" aria-live="polite"><p>Loading supporters…</p></div>
   <div class="publish-name">
@@ -113,5 +113,5 @@
  </div>
 </div>
 <script src="/road-animation.js?v=22" defer></script>
-<script type="module" src="/main.js?v=22"></script>
+<script type="module" src="/main.js?v=23"></script>
 </body></html>
