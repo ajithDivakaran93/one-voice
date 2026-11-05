@@ -15,6 +15,23 @@ A Firebase-hosted road-safety petition with a private drawn-signature record, a 
 
    **Do not deploy only hosting when introducing the distributed counter.** The new client needs permission to read `counterShards`; the new backend must write shards rather than the previous hot counter document. First deploy may require the Firebase Blaze plan. Code committed to GitHub is not automatically live.
 
+## Firebase Hosting URLs
+
+Both sites are part of the **same Firebase project** and use the same Firestore and Cloud Functions. Hosting deploy targets are mapped in `.firebaserc`:
+
+- `main` -> `one-voice-44e1f.web.app` (existing site)
+- `justice` -> `onevoiceforjustice-pt.web.app` (additional site)
+
+After pulling the repository, deploy only the new website without changing any database or backend resources:
+
+```sh
+firebase deploy --project one-voice-44e1f --only hosting:justice
+```
+
+To deploy only the original site, use `--only hosting:main`. A general `--only hosting` deployment will deploy **both** sites. The exact name `onevoiceforjustice.web.app` is **not** created by the `onevoiceforjustice-pt` site ID. If the shorter ID is available, it requires creating a separate Firebase Hosting site.
+
+Before publicizing the new address, verify that anonymous sign-in, Cloud Functions, latest names and signature count work end-to-end. If Firebase Authentication reports an unauthorized-domain error, check **Authentication > Settings > Authorized domains** and add `onevoiceforjustice-pt.web.app`. Keep the original address online until the new one is verified.
+
 ## High-volume signature architecture (10,000+ cumulative signatures)
 
 - Each successful `addVoice` call verifies an authenticated Firebase UID, validates a mandatory public name and drawn signature, and atomically creates one private `signatures/{uid}` record, one public `lights/{uid}` record, and increments exactly **one of 64** counter documents in `counterShards/{00..63}`.
