@@ -26,8 +26,10 @@ function updateForm(){
  $('submitSign').disabled=submitting;
  if(submitting)return;
  if(!ready)message('Firebase is not connected. You can sign, but submission needs a connection.');
+ else if(!$('signName').value.trim())message('Enter your full name to continue.');
  else if(!points.length)message('Draw your signature to continue.');
- else if(!$('agree').checked)message('Check the consent box to submit.');
+ else if(!$('showName').checked)message('Agree to show your name in the supporters list.');
+ else if(!$('agree').checked)message('Check the campaign consent box to submit.');
  else message('Ready. Tap STAND WITH US to submit your voice.');
 }
 canvas.addEventListener('pointerdown',e=>{
@@ -43,6 +45,8 @@ for(const event of ['pointerup','pointercancel','lostpointercapture']){
 }
 $('clearSign').onclick=()=>{points=[];active=null;$('hint').hidden=false;redraw();updateForm();};
 $('agree').addEventListener('change',updateForm);
+$('showName').addEventListener('change',updateForm);
+$('signName').addEventListener('input',updateForm);
 function setDialog(node,show){
  node.hidden=!show;document.body.style.overflow=['modal','supportersModal','petitionModal'].some(id=>!$(id).hidden)?'hidden':'';
  if(show)requestAnimationFrame(()=>{if(node===$('modal'))resizeSignature();});
@@ -134,9 +138,10 @@ $('shareCampaign').onclick=shareCampaign;
 $('submitSign').onclick=async()=>{
  if(submitting)return;
  if(!ready){message('Firebase connection unavailable. Refresh the page and check your internet connection.');return;}
+ if(!$('signName').value.trim()){message('Please enter your full name.');$('signName').focus();return;}
  if(!points.length){message('Please draw your signature first.');return;}
  if(!$('agree').checked){message('Please accept the consent checkbox.');return;}
- if($('showName').checked&&!$('signName').value.trim()){message('Enter a name to appear on the public list, or uncheck public display.');return;}
+ if(!$('showName').checked){message('To sign, please agree to display your name on the public supporters list.');return;}
  submitting=true;updateForm();$('submitSign').innerHTML='SAVING YOUR VOICE…';
  message('Submitting securely. Do not close the page.');
  try{
