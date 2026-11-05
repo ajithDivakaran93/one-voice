@@ -21,5 +21,5 @@ exports.addVoice=onCall({region:'asia-south1',maxInstances:30},async request=>{
   t.create(light,{createdAt:FieldValue.serverTimestamp(),...(showName?{displayName:name.trim()}: {})});
   t.set(stats,{count:FieldValue.increment(1),updatedAt:FieldValue.serverTimestamp()},{merge:true});
  });
- return {ok:true};
+ return {ok:true,publicNameListed:showName};
 });
