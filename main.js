@@ -110,6 +110,7 @@ async function loadSupporterPage(reset=false){
  if(directoryDone)return;
  directoryBusy=true;renderSupporters();
  try{
+  // Explicitly sort newest signatures first across every paginated page.
   const order=storeApi.orderBy('createdAt','desc');
   const terms=[order,storeApi.limit(60)];
   if(directoryCursor)terms.push(storeApi.startAfter(directoryCursor));
@@ -148,25 +149,6 @@ async function shareCampaign(){
   else{location.href='https://wa.me/?text='+encodeURIComponent('Join ONE VOICE: '+url);}
  }catch(e){if(e?.name!=='AbortError')console.warn('Share unavailable',e);}
 }
-$('publishMyName').onclick=async()=>{
- const name=$('publicName').value.trim(),status=$('publishStatus'),button=$('publishMyName');
- if(!ready){status.textContent='Campaign connection unavailable. Please refresh.';return;}
- if(!name){status.textContent='Enter the name you want to publish.';return;}
- if(!$('publicNameAgree').checked){status.textContent='Please consent to public name display.';return;}
- button.disabled=true;status.textContent='Publishing your name…';
- try{
-  const publish=httpsCallable(functions,'publishSupporterName');
-  await publish({name,consent:true});
-  status.textContent='Your name is public. The supporter list will update shortly.';
- }catch(error){
-  console.error('Public name opt-in failed',error);
-  status.textContent=error.code==='functions/failed-precondition'
-   ?'No existing signature found for this browser. Sign the petition first.'
-   :error.code==='functions/not-found'
-    ?'This feature needs the updated Cloud Function to be deployed.'
-    :'Could not publish your name. Please try again.';
- }finally{button.disabled=false;}
-};
 $('share').onclick=shareCampaign;
 $('shareCampaign').onclick=shareCampaign;
 $('submitSign').onclick=async()=>{
