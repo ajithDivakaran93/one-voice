@@ -8,6 +8,42 @@
  if(!ctx)return;
  const reduce=matchMedia('(prefers-reduced-motion: reduce)');
  let w=1,h=1,dpr=1,frame=0,last=0,travel=0,ids=[],entry=null;
+ let names=new Map(),cycleEpoch=performance.now()/1000,lastVoiceKey='';
+ const voiceBox=document.getElementById('roadVoice');
+ const voiceName=document.getElementById('roadVoiceName');
+ const voiceSlogan=document.getElementById('roadVoiceSlogan');
+ const slogans=[
+   'RAISING A HAND FOR JUSTICE',
+   'STANDING FOR SAFER ROADS',
+   'DEMANDING ROAD ACCOUNTABILITY',
+   'SPEAKING UP FOR EVERY PEDESTRIAN',
+   'UNITED FOR ROAD SAFETY',
+   'ONE MORE VOICE FOR CHANGE'
+ ];
+ function spotlight(t){
+   const publicVoices=ids.filter(id=>names.has(id));
+   const since=entry?t-entry.start:Infinity;
+   if(entry&&entry.name&&since>=0&&since<5)
+     return {id:entry.id,name:entry.name,text:'JUST JOINED THE STAND FOR JUSTICE',side:-1,newcomer:true};
+   if(!publicVoices.length)return null;
+   const cycle=Math.floor(Math.max(0,t-cycleEpoch)/3);
+   const id=publicVoices[cycle%publicVoices.length];
+   return {id,name:names.get(id),text:slogans[cycle%slogans.length],side:cycle%2===0?-1:1,newcomer:false};
+ }
+ function showSlogan(spot){
+   if(!voiceBox)return;
+   if(!spot){voiceBox.hidden=true;lastVoiceKey='';return;}
+   const key=spot.id+'|'+spot.text+'|'+spot.newcomer;
+   if(key===lastVoiceKey)return;
+   lastVoiceKey=key;
+   voiceName.textContent=spot.name;
+   voiceSlogan.textContent=spot.text;
+   voiceBox.dataset.side=spot.side===-1?'left':'right';
+   voiceBox.classList.remove('road-voice-enter');
+   void voiceBox.offsetWidth;
+   voiceBox.classList.add('road-voice-enter');
+   voiceBox.hidden=false;
+ }
  const hash=id=>{let n=2166136261;for(let i=0;i<id.length;i++){n^=id.charCodeAt(i);n=Math.imul(n,16777619);}return n>>>0;};
  const center=()=>w*.5;
  const horizon=()=>h*.36;
@@ -99,7 +135,7 @@
    // spaced perspective depths. This avoids bunching at the near end.
    // Four symbolic figures are not counted as supporters; they set the scene.
    // Actual submissions occupy separate vacant slots (up to 8 on mobile).
-   const mobile=w<700,figures=[];
+   const mobile=w<700,figures=[],active=spotlight(t);
    const rows=mobile?9:11;
    const yStart=mobile?.44:.42,yEnd=mobile?.88:.89;
    const pForY=portion=>clamp((portion-.36)/.83,.035,.95);
@@ -121,48 +157,49 @@
            added++;
            // During the entry celebration the new signer gets a single,
            // unobstructed foreground position, not a duplicate behind text.
-           if(entry?.id===id&&t-entry.start<6)continue;
+           if(active?.id===id)continue;
            figures.push({x,y,z,scale:p,seed:hash(id),side,symbolic:false,highlight:false,id});
            continue;
          }
        }
        // Only populate a sparse symbolic line: every other slot and the
        // bottom-most position, keeping the near-side road visually occupied.
-       if(slot%2===1 || slot===rows-1){
+       if((slot%2===1 || slot===rows-1)&& !(active?.side===side&&slot===5)){
          figures.push({x,y,z,scale:p,seed:slot*71+(side===-1?7:13),side,symbolic:true,highlight:false});
        }
      }
    }
-   // New signer is spotlighted in a prominent stationary foreground slot.
-   if(entry && t-entry.start<6){
-     const p=.46,z=Math.pow(p,1/1.7),side=-1;
-     const x=clamp(mid-(project(z).half+(mobile?9:14)),mobile?29:40,w-(mobile?29:40));
-     figures.push({x,y:h*.71,z,scale:p,seed:hash(entry.id),side,symbolic:false,highlight:true,id:entry.id});
+   // One real, consented supporter is featured at a time on the road.
+   // This figure replaces the normal row representation (no duplication).
+   if(active){
+     const p=.46,z=Math.pow(p,1/1.7),side=active.side;
+     const x=clamp(mid+side*(project(z).half+(mobile?9:14)),mobile?29:40,w-(mobile?29:40));
+     figures.push({x,y:h*.71,z,scale:p,seed:hash(active.id),side,symbolic:false,highlight:true,newcomer:active.newcomer,id:active.id});
    }
    figures.sort((a,b)=>a.y-b.y);
    for(const item of figures){
      let x=item.x,y=item.y,opacity=1;
-     if(item.highlight && entry){
-       const elapsed=Math.max(0,t-entry.start);
-       // New signers appear already standing in their place. Highlight
-       // without sliding, walking or moving their body.
-       const strength=Math.max(0,1-elapsed/5.5);
+     if(item.highlight){
+       const newcomer=item.newcomer&&entry;
+       const elapsed=newcomer?Math.max(0,t-entry.start):0;
+       const strength=newcomer?Math.max(.18,1-elapsed/5):.45+.09*Math.sin(t*2.6);
        ctx.save();
-       // A soft spotlight from the person's feet, plus a pulsing ring.
-       ctx.globalAlpha=strength*.68;
-       const beam=ctx.createRadialGradient(x,y-item.scale*15,0,x,y-item.scale*15,mobile?65:100);
-       beam.addColorStop(0,'#ffbdce7a');beam.addColorStop(.26,'#ff355a49');beam.addColorStop(1,'#ff355a00');
-       ellipse(x,y-item.scale*15,mobile?65:100,mobile?85:110,beam);
-       if(!reduce.matches){
-         ctx.strokeStyle='#ffb2c8';ctx.lineWidth=2;
-         ctx.globalAlpha=strength*.65;
-         const radius=(mobile?16:23)+((elapsed*18)%(mobile?46:67));
+       ctx.globalAlpha=strength*.64;
+       const beam=ctx.createRadialGradient(x,y-item.scale*15,0,x,y-item.scale*15,mobile?60:90);
+       beam.addColorStop(0,'#ffd0dc85');
+       beam.addColorStop(.25,'#ff3c6340');
+       beam.addColorStop(1,'#ff355a00');
+       ellipse(x,y-item.scale*15,mobile?60:90,mobile?74:110,beam);
+       if(newcomer&&!reduce.matches){
+         ctx.strokeStyle='#ffbbcc';ctx.lineWidth=2;ctx.globalAlpha=strength*.6;
+         const radius=(mobile?14:22)+((elapsed*22)%(mobile?39:57));
          ctx.beginPath();ctx.arc(x,y-item.scale*19,radius,0,Math.PI*2);ctx.stroke();
        }
        ctx.restore();
      }
      person(x,y,item.scale,item.seed,t,item.side,item.highlight,item.symbolic,opacity);
    }
+   showSlogan(active);
    // atmospheric foreground vignette
    const vignette=ctx.createLinearGradient(0,0,0,h);
    vignette.addColorStop(0,'#05050877');vignette.addColorStop(.25,'#05050827');
@@ -184,8 +221,27 @@
  const start=()=>{if(!frame){last=0;frame=requestAnimationFrame(tick);}};
  const stop=()=>{if(frame)cancelAnimationFrame(frame);frame=0;};
  window.OneVoiceRoad={
-   setSupporters(next){ids=Array.isArray(next)?next.slice(0,80):[];render(performance.now()/1000);},
-   celebrate(id){if(typeof id!=='string'||!id)return;entry={id,start:performance.now()/1000};render(performance.now()/1000);}
+   setSupporters(next){
+     const people=Array.isArray(next)?next.slice(0,140):[];
+     ids=[];names=new Map();
+     for(const item of people){
+       const id=typeof item==='string'?item:item?.id;
+       if(typeof id!=='string'||!id||ids.includes(id))continue;
+       ids.push(id);
+       const name=typeof item==='object'&&typeof item?.name==='string'?item.name.trim().slice(0,60):'';
+       if(name)names.set(id,name);
+     }
+     render(performance.now()/1000);
+   },
+   celebrate(id,name=''){
+     if(typeof id!=='string'||!id)return;
+     const cleanName=typeof name==='string'?name.trim().slice(0,60):'';
+     entry={id,name:cleanName||names.get(id)||'',start:performance.now()/1000};
+     if(entry.name)names.set(id,entry.name);
+     if(!ids.includes(id))ids.unshift(id);
+     cycleEpoch=entry.start+5;
+     render(entry.start);
+   }
  };
  window.addEventListener('resize',resize);
  document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
