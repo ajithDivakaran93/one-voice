@@ -3,7 +3,8 @@ const $=id=>document.getElementById(id);
 const canvas=$('signature'),context=canvas.getContext('2d');
 let ready=false,submitting=false,signed=false,points=[],active=null,auth,db,functions,httpsCallable;let recentSupporterIds=[],pendingOwnId=null,pendingOwnName='',publicNamesById=new Map();
 let storeApi=null,directoryRows=[],directoryCursor=null,directoryBusy=false,directoryDone=false,directoryError='',directoryLoaded=false;
-let latestPageDocs=[],olderPageDocs=[],directoryRevision=0;
+let latestPageDocs=[],olderPageDocs=[],popupPageDocs=null,directoryRevision=0,stopPopupListener=null;
+let legacyCount=null,shardsCount=null,legacyLoaded=false,shardsLoaded=false;
 // Server-confirmed submissions stay in a local reconciliation layer until
 // Firestore delivers both the directory row and its separate stats snapshot.
 let confirmedLocal=null,serverCount=null,pendingCountFloor=null;
@@ -60,6 +61,10 @@ $('agree').addEventListener('change',updateForm);
 $('showName').addEventListener('change',updateForm);
 $('signName').addEventListener('input',updateForm);
 function setDialog(node,show){
+ if(node===$('supportersModal')){
+  if(show)startPopupListener();
+  else closePopupListener();
+ }
  node.hidden=!show;document.body.style.overflow=['modal','supportersModal','petitionModal'].some(id=>!$(id).hidden)?'hidden':'';
  if(show)requestAnimationFrame(()=>{if(node===$('modal'))resizeSignature();});
 }
@@ -121,7 +126,7 @@ function renderLatestSupporters(){
 }
 function rebuildDirectory(){
  const byId=new Map();
- for(const doc of [...olderPageDocs,...latestPageDocs,...(confirmedLocal?[confirmedLocal]:[])])byId.set(doc.id,doc);
+ for(const doc of [...olderPageDocs,...(popupPageDocs||[]),...latestPageDocs,...(confirmedLocal?[confirmedLocal]:[])])byId.set(doc.id,doc);
  directoryRows=Array.from(byId.values()).sort((a,b)=>{
   const at=a.createdAt?.toMillis?.()||0,bt=b.createdAt?.toMillis?.()||0;
   return bt-at || a.id.localeCompare(b.id);
@@ -152,16 +157,64 @@ function renderSupporters(){
   ?directoryError
   :directoryRows.length.toLocaleString('en-IN')+' of '+(total===null?'—':total.toLocaleString('en-IN'))+' signatures displayed · LIVE';
  const hasMore=total===null?!directoryDone:directoryRows.length<total;
- $('moreSupporters').hidden=directoryBusy||directoryDone||!hasMore||!directoryRows.length;
+ $('moreSupporters').hidden=popupPageDocs===null||directoryBusy||directoryDone||!hasMore||!directoryRows.length;
  $('moreSupporters').disabled=directoryBusy;
 }
+// Only subscribe to the first 60 names when someone opens the full list.
+// Main-page viewers listen to the newest TEN, keeping read costs bounded.
+function startPopupListener(){
+ if(stopPopupListener||!storeApi||!db)return;
+ directoryRevision++;
+ popupPageDocs=null;
+ olderPageDocs=[];
+ directoryCursor=null;
+ directoryBusy=false;
+ directoryDone=false;
+ directoryError='';
+ const query=storeApi.query(storeApi.collection(db,'lights'),
+  storeApi.orderBy('createdAt','desc'),storeApi.limit(60));
+ stopPopupListener=storeApi.onSnapshot(query,snapshot=>{
+  const previousTail=popupPageDocs?.at(-1)?.id;
+  popupPageDocs=snapshot.docs.map(doc=>({
+   id:doc.id,createdAt:doc.data().createdAt,
+   name:typeof doc.data().displayName==='string'&&doc.data().displayName.trim()?doc.data().displayName.trim():null,
+   snapshot:doc
+  }));
+  // The page boundary can shift as new signatures arrive. Re-page from
+  // the current cursor instead of skipping entries when the boundary shifts.
+  if(previousTail&&previousTail!==popupPageDocs.at(-1)?.id){
+   directoryRevision++;
+   olderPageDocs=[];
+   directoryCursor=null;
+   directoryDone=false;
+  }
+  if(popupPageDocs.length<60)directoryDone=true;
+  rebuildDirectory();
+ },error=>{
+  console.warn('Full supporter list listener failed',error);
+  directoryError='Full supporter list unavailable. Please try again.';
+  rebuildDirectory();
+ });
+ rebuildDirectory();
+}
+function closePopupListener(){
+ if(stopPopupListener){stopPopupListener();stopPopupListener=null;}
+ directoryRevision++;
+ popupPageDocs=null;
+ olderPageDocs=[];
+ directoryCursor=null;
+ directoryBusy=false;
+ directoryDone=false;
+ directoryError='';
+ rebuildDirectory();
+}
 async function loadSupporterPage(){
- if(!storeApi||!db||directoryBusy||directoryDone)return;
+ if(!storeApi||!db||directoryBusy||directoryDone||popupPageDocs===null)return;
  directoryBusy=true;directoryError='';renderSupporters();
  const revision=directoryRevision;
  try{
   // Cursor is derived from the last loaded historic page, or the live page.
-  const cursor=directoryCursor || latestPageDocs.at(-1)?.snapshot;
+  const cursor=directoryCursor || popupPageDocs.at(-1)?.snapshot;
   if(!cursor){directoryDone=true;return;}
   const q=storeApi.query(storeApi.collection(db,'lights'),
     storeApi.orderBy('createdAt','desc'),storeApi.startAfter(cursor),storeApi.limit(60));
@@ -181,12 +234,27 @@ async function loadSupporterPage(){
   directoryError='Older supporters could not be loaded. Please try again.';
  }finally{directoryBusy=false;renderSupporters();}
 }
+// Legacy count is a permanent baseline. New Cloud Function writes use 64
+// distributed counter documents, with no hot shared document on signup.
+function updateLegacyCount(value){
+ legacyLoaded=true;legacyCount=Number.isFinite(value)?value:null;
+ publishAggregateCount();
+}
+function updateShardCount(value){
+ shardsLoaded=true;shardsCount=Number.isFinite(value)?value:null;
+ publishAggregateCount();
+}
+function publishAggregateCount(){
+ if(!legacyLoaded||!shardsLoaded)return;
+ const aggregate=legacyCount===null||shardsCount===null?NaN:legacyCount+shardsCount;
+ updateCount(aggregate);
+}
 function updateCount(value){
  serverCount=Number.isFinite(value)?value:null;
- // The server may deliver the counter later than the committed signature
- // response. Never let a stale snapshot undo a server-confirmed increment.
+ // A confirmed callable may be acknowledged before both live listeners
+ // advance. Retain the visible lower bound until the true total catches up.
  if(pendingCountFloor!==null&&serverCount!==null&&serverCount>=pendingCountFloor)
-   pendingCountFloor=null;
+  pendingCountFloor=null;
  renderConfirmedCount();
 }
 function renderConfirmedCount(){
@@ -195,7 +263,11 @@ function renderConfirmedCount(){
  const shown=n===null?'—':n.toLocaleString('en-IN');
  $('count').textContent=shown;
  $('countMirror').textContent=shown;
- renderSupporters();
+ $('supporterTotal').textContent=shown;
+ // Counter updates are frequent. Don't rebuild every name row each time.
+ const total=n;
+ $('supporterShown').textContent=directoryRows.length.toLocaleString('en-IN')+
+  ' of '+(total===null?'—':total.toLocaleString('en-IN'))+' signatures displayed · LIVE';
 }
 function showConnected(text){const status=document.getElementById('connectionStatus');if(status)status.textContent=text;}
 function markSigned(animate=true,publicName=''){
@@ -293,48 +365,48 @@ async function init(){
   functions=functionsM.getFunctions(app,'asia-south1');
   httpsCallable=functionsM.httpsCallable;
   // Public campaign listeners should remain live even if anonymous sign-in fails.
+  // Existing signatures stay in the legacy document; new ones are spread
+  // across 64 shards. Display their sum without losing historic totals.
   storeM.onSnapshot(storeM.doc(db,'stats','campaign'),snapshot=>{
-   // Never fake the counter: it is the value committed by Cloud Functions.
-   updateCount(snapshot.exists()?Number(snapshot.data().count)||0:0);
+   updateLegacyCount(snapshot.exists()?Number(snapshot.data().count)||0:0);
   },error=>{
-   console.warn('Counter subscription failed',error);
-   updateCount(NaN);
-   $('supporterShown').textContent='Live signature count temporarily unavailable.';
+   console.warn('Legacy counter subscription failed',error);
+   updateLegacyCount(NaN);
+  });
+  storeM.onSnapshot(storeM.collection(db,'counterShards'),snapshot=>{
+   const sum=snapshot.docs.reduce((acc,doc)=>acc+(Number(doc.data().count)||0),0);
+   updateShardCount(sum);
+  },error=>{
+   console.warn('Distributed counter subscription failed',error);
+   updateShardCount(NaN);
   });
   const lightsRef=storeM.collection(db,'lights');
-  const recentQuery=storeM.query(lightsRef,storeM.orderBy('createdAt','desc'),storeM.limit(140));
+  const recentQuery=storeM.query(lightsRef,storeM.orderBy('createdAt','desc'),storeM.limit(10));
   storeM.onSnapshot(recentQuery,snapshot=>{
     const ids=snapshot.docs.map(doc=>doc.id);
     liveRecentIds.clear();
     ids.forEach(id=>liveRecentIds.add(id));
-    publicNamesById=new Map(snapshot.docs.map(doc=>[doc.id,typeof doc.data().displayName==='string'?doc.data().displayName.trim():'']).filter(([,name])=>!!name));
-    if(pendingOwnId && ids.includes(pendingOwnId)){
-      pendingOwnId=null;pendingOwnName='';
-    }
-    drawPeople(ids);
-  },error=>{
-    console.warn('Supporter illustration subscription failed',error);
-    const notice=$('voicesNotice');
-    if(notice)notice.textContent='Live illustrations unavailable. Please refresh.';
-  });
-  const directoryQuery=storeM.query(lightsRef,storeM.orderBy('createdAt','desc'),storeM.limit(60));
-  storeM.onSnapshot(directoryQuery,snapshot=>{
-    directoryLoaded=true;directoryError='';
+    publicNamesById=new Map(snapshot.docs.map(doc=>
+     [doc.id,typeof doc.data().displayName==='string'?doc.data().displayName.trim():''])
+     .filter(([,name])=>!!name));
     latestPageDocs=snapshot.docs.map(doc=>({
-      id:doc.id,createdAt:doc.data().createdAt,
-      name:typeof doc.data().displayName==='string'&&doc.data().displayName.trim()?doc.data().displayName.trim():null,
-      snapshot:doc
+     id:doc.id,createdAt:doc.data().createdAt,
+     name:typeof doc.data().displayName==='string'&&doc.data().displayName.trim()?doc.data().displayName.trim():null,
+     snapshot:doc
     }));
-    // Once the saved row is present, the live snapshot replaces the local
-    // confirmation. Keep the local row until that exact ID is observed.
+    directoryLoaded=true;directoryError='';
     if(confirmedLocal&&latestPageDocs.some(row=>row.id===confirmedLocal.id))
      confirmedLocal=null;
-    // Historic pages remain intact and the newest row is refreshed in both
-    // the main-page preview and the full supporter directory.
+    if(pendingOwnId&&ids.includes(pendingOwnId)){
+     pendingOwnId=null;pendingOwnName='';
+    }
+    drawPeople(ids);
     rebuildDirectory();
   },error=>{
-    console.warn('Live supporter directory failed',error);
+    console.warn('Live supporter list subscription failed',error);
     directoryError='Live supporter list unavailable. Please refresh.';
+    const notice=$('voicesNotice');
+    if(notice)notice.textContent='Live illustrations unavailable. Please refresh.';
     renderSupporters();
     renderLatestSupporters();
   });
