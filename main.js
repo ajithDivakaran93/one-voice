@@ -1,7 +1,7 @@
 import {firebaseConfig} from './firebase-config.js';
 const $=id=>document.getElementById(id);
 const canvas=$('signature'),context=canvas.getContext('2d');
-let ready=false,submitting=false,signed=false,points=[],active=null,auth,db,functions,httpsCallable;let recentSupporterIds=[],pendingOwnId=null,pendingOwnName='',publicNamesById=new Map();
+let ready=false,submitting=false,signed=false,points=[],active=null,auth,db,functions,httpsCallable,signInAnonymously;let recentSupporterIds=[],pendingOwnId=null,pendingOwnName='',publicNamesById=new Map();
 let storeApi=null,directoryRows=[],directoryCursor=null,directoryBusy=false,directoryDone=false,directoryError='',directoryLoaded=false;
 let latestPageDocs=[],olderPageDocs=[],popupPageDocs=null,directoryRevision=0,stopPopupListener=null;
 let legacyCount=null,shardsCount=null,legacyLoaded=false,shardsLoaded=false;
@@ -310,6 +310,10 @@ $('submitSign').onclick=async()=>{
  submitting=true;updateForm();$('submitSign').innerHTML='SAVING YOUR VOICE…';
  message('Submitting securely. Do not close the page.');
  try{
+  // Reading the campaign never creates a Firebase Auth account. Only an
+  // actual submitted signature needs an anonymous authenticated UID.
+  await auth.authStateReady();
+  if(!auth.currentUser)await signInAnonymously(auth);
   const addVoice=httpsCallable(functions,'addVoice');
   const strokes=points.map(line=>line.map(([x,y])=>[Math.round(x*1000)/1000,Math.round(y*1000)/1000]));
   const result=await addVoice({name:$('signName').value.trim(),strokes,consent:true,showName:$('showName').checked});
@@ -374,6 +378,7 @@ async function init(){
   storeApi=storeM;
   functions=functionsM.getFunctions(app,'asia-south1');
   httpsCallable=functionsM.httpsCallable;
+  signInAnonymously=authM.signInAnonymously;
   // Public campaign listeners should remain live even if anonymous sign-in fails.
   // Existing signatures stay in the legacy document; new ones are spread
   // across 64 shards. Display their sum without losing historic totals.
@@ -420,7 +425,7 @@ async function init(){
     renderSupporters();
     renderLatestSupporters();
   });
-  await authM.signInAnonymously(auth);
+  // The public view uses read-only collections and needs no sign-in.
   ready=true;updateForm();
   if(!$('supportersModal').hidden)startPopupListener();
  }catch(error){
