@@ -1,12 +1,10 @@
 const {onCall,HttpsError}=require('firebase-functions/v2/https');
 const {initializeApp}=require('firebase-admin/app');
-const {createHash}=require('node:crypto');
+const {shardForUid}=require('./counter-shards');
 const {getFirestore,FieldValue}=require('firebase-admin/firestore');
 initializeApp(); const db=getFirestore();
 // Multiple independently writable counter documents eliminate contention on
 // the legacy stats/campaign document as the campaign grows.
-const COUNTER_SHARDS=64;
-const shardForUid=uid=>createHash('sha256').update(uid).digest().readUInt16BE(0)%COUNTER_SHARDS;
 exports.addVoice=onCall({region:'asia-south1',maxInstances:30},async request=>{
  if(!request.auth?.uid)throw new HttpsError('unauthenticated','Please reload and try again.');
  const {name='',strokes,consent,showName=false}=request.data||{};
