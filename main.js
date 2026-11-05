@@ -216,8 +216,7 @@ async function init(){
   storeApi=storeM;
   functions=functionsM.getFunctions(app,'asia-south1');
   httpsCallable=functionsM.httpsCallable;
-  await authM.signInAnonymously(auth);
-  ready=true;updateForm();
+  // Public campaign listeners should remain live even if anonymous sign-in fails.
   storeM.onSnapshot(storeM.doc(db,'stats','campaign'),snapshot=>{
    // Never fake the counter: it is the value committed by Cloud Functions.
    updateCount(snapshot.exists()?Number(snapshot.data().count)||0:0);
@@ -253,6 +252,8 @@ async function init(){
     directoryError='Live supporter list unavailable. Please refresh.';
     renderSupporters();
   });
+  await authM.signInAnonymously(auth);
+  ready=true;updateForm();
  }catch(error){
   console.error('Firebase setup failed:',error);
   ready=false;updateForm();
