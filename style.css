@@ -263,3 +263,18 @@
  #roadVoiceSlogan{font-size:6.8px}
 }
 @media(prefers-reduced-motion:reduce){.road-voice-enter{animation:none}}
+
+/* V32: show live supporter names directly after the moving road */
+.supporter-highlights{
+ position:relative;
+ padding:38px clamp(23px,7vw,110px) 42px;
+ background:linear-gradient(180deg,#0b0b0f 0%,#140e16 56%,#0b0b0f 100%);
+}
+.supporter-highlights .latest-supporters{
+ max-width:1200px;
+ margin:0 auto;
+}
+@media(max-width:700px){
+ .supporter-highlights{padding:22px 16px 29px}
+ .supporter-highlights .latest-supporters{margin:0;padding:22px 20px}
+}
