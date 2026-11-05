@@ -18,6 +18,7 @@
    // Readable human silhouette: separated head, shoulders, torso, two legs and
    // a raised fist. Slow animated fist lift is deliberately subtle.
    const mobile=w<700;
+   if(!reduce.matches) y+=Math.sin(t*2.3+seed*.013)*Math.min(2.6,1.3+scale*2);
    const height=clamp(23+scale*(mobile?37:58),22,mobile?46:70);
    const head=height*.105, neck=y-height*.77, shoulderY=y-height*.70;
    const hipY=y-height*.34, torsoWidth=height*.23;
@@ -100,31 +101,41 @@
    // Four symbolic figures are not counted as supporters; they set the scene.
    // Actual submissions occupy separate vacant slots (up to 8 on mobile).
    const mobile=w<700,figures=[];
-   const rows=mobile?7:9;
-   const yStart=mobile?.46:.43,yEnd=mobile?.755:.81;
+   const rows=mobile?9:11;
+   const yStart=mobile?.44:.42,yEnd=mobile?.88:.89;
    const pForY=portion=>clamp((portion-.36)/.83,.035,.95);
    const actualPerSide=Math.min(Math.ceil(ids.length/2),mobile?4:5);
    for(const side of [-1,1]){
      let added=0;
      for(let slot=0;slot<rows;slot++){
        // Real supporters fill alternating gaps between symbolic figures.
-       const realSlot=(slot%2===0);
-       if(realSlot && added>=actualPerSide)continue;
+       const realSlot=(slot%2===0 && slot<rows-1);
        const portion=yStart+(yEnd-yStart)*(slot/(rows-1));
        const p=pForY(portion),z=Math.pow(p,1/1.7);
-       const shoulderMargin=mobile?10:16;
+       const shoulderMargin=mobile?9:14;
        const x=clamp(mid+side*(project(z).half+shoulderMargin),mobile?29:40,w-(mobile?29:40));
        const y=h*portion;
-       if(realSlot){
+       if(realSlot && added<actualPerSide){
          const index=added*2+(side===-1?0:1);
-         if(index>=ids.length)continue;
-         const id=ids[index];
-         figures.push({x,y,z,scale:p,seed:hash(id),side,symbolic:false,highlight:entry?.id===id&&t-entry.start<6,id});
-         added++;
-       }else{
+         if(index<ids.length){
+           const id=ids[index];
+           figures.push({x,y,z,scale:p,seed:hash(id),side,symbolic:false,highlight:entry?.id===id&&t-entry.start<6,id});
+           added++;continue;
+         }
+       }
+       // Only populate a sparse symbolic line: every other slot and the
+       // bottom-most position, keeping the near-side road visually occupied.
+       if(slot%2===1 || slot===rows-1){
          figures.push({x,y,z,scale:p,seed:slot*71+(side===-1?7:13),side,symbolic:true,highlight:false});
        }
      }
+   }
+   // When the entry would otherwise be out of the visible recent-slot range,
+   // show it in a temporary foreground slot until the highlight finishes.
+   if(entry && t-entry.start<6 && !figures.some(f=>f.id===entry.id)){
+     const p=.57,z=Math.pow(p,1/1.7),side=-1;
+     const x=clamp(mid-(project(z).half+(mobile?9:14)),mobile?29:40,w-(mobile?29:40));
+     figures.push({x,y:h*.83,z,scale:p,seed:hash(entry.id),side,symbolic:false,highlight:true,id:entry.id});
    }
    figures.sort((a,b)=>a.y-b.y);
    for(const item of figures){
