@@ -100,7 +100,7 @@ function markSigned(animate=true){
  $('openSign').innerHTML='VOICE ADDED <span>✓</span>';
  setDialog($('modal'),false);
  window.scrollTo({top:0,behavior:'instant'});
- setDialog($('success'),true);
+ if(animate){setTimeout(()=>{if(signed && $('modal').hidden && $('petitionModal').hidden && $('supportersModal').hidden)setDialog($('success'),true);},1900);}else setDialog($('success'),true);
 }
 async function shareCampaign(){
  const url=location.origin+location.pathname;
@@ -123,7 +123,10 @@ $('submitSign').onclick=async()=>{
  try{
   const addVoice=httpsCallable(functions,'addVoice');
   const strokes=points.map(line=>line.map(([x,y])=>[Math.round(x*1000)/1000,Math.round(y*1000)/1000]));
-  await addVoice({name:$('signName').value.trim(),strokes,consent:true,showName:$('showName').checked});
+  const result=await addVoice({name:$('signName').value.trim(),strokes,consent:true,showName:$('showName').checked});
+  if($('showName').checked && result?.data?.publicNameListed!==true){
+   $('success').querySelector('.success-toast-copy span').textContent='Signature saved. Public name listing needs the updated Cloud Function.';
+  }
   markSigned();
  }catch(error){
   console.error('Signature submission failed:',error);
