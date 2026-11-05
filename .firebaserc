@@ -1,1 +1,17 @@
-{"projects":{"default":"one-voice-44e1f"}}
+{
+  "projects": {
+    "default": "one-voice-44e1f"
+  },
+  "targets": {
+    "one-voice-44e1f": {
+      "hosting": {
+        "main": [
+          "one-voice-44e1f"
+        ],
+        "justice": [
+          "onevoiceforjustice-pt"
+        ]
+      }
+    }
+  }
+}
