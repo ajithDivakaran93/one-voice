@@ -8,7 +8,7 @@
  if(!ctx)return;
  const reduce=matchMedia('(prefers-reduced-motion: reduce)');
  let w=1,h=1,dpr=1,frame=0,last=0,travel=0,ids=[],entry=null;
- let names=new Map(),cycleEpoch=performance.now()/1000,lastVoiceKey='';
+ let names=new Map(),cycleEpoch=performance.now()/1000,lastVoiceKey='',lastVoicePlacement='';
  const voiceBox=document.getElementById('roadVoice');
  const voiceName=document.getElementById('roadVoiceName');
  const voiceSlogan=document.getElementById('roadVoiceSlogan');
@@ -30,15 +30,32 @@
    const id=publicVoices[cycle%publicVoices.length];
    return {id,name:names.get(id),text:slogans[cycle%slogans.length],side:cycle%2===0?-1:1,newcomer:false};
  }
+ function placeSlogan(spot){
+   if(!voiceBox||!spot)return;
+   const key=spot.side+'|'+Math.round(w)+'|'+Math.round(h);
+   if(key===lastVoicePlacement)return;
+   lastVoicePlacement=key;
+   const mobile=w<700,p=.46,z=Math.pow(p,1/1.7);
+   const margin=mobile?29:40;
+   const x=Math.min(w-margin,Math.max(margin,w*.5+spot.side*(project(z).half+(mobile?9:14))));
+   const figureHeight=Math.min(mobile?46:70,Math.max(22,23+p*(mobile?37:58)));
+   const labelBottom=h*.71-figureHeight-17;
+   voiceBox.style.left=Math.round(x)+'px';
+   voiceBox.style.top=Math.round(labelBottom)+'px';
+ }
  function showSlogan(spot){
    if(!voiceBox)return;
    if(!spot){voiceBox.hidden=true;lastVoiceKey='';return;}
    const key=spot.id+'|'+spot.text+'|'+spot.newcomer;
+   placeSlogan(spot);
    if(key===lastVoiceKey)return;
    lastVoiceKey=key;
    voiceName.textContent=spot.name;
    voiceSlogan.textContent=spot.text;
    voiceBox.dataset.side=spot.side===-1?'left':'right';
+   // Keep the compact slogan physically anchored above the selected person.
+   // The same projected position is used to draw the featured silhouette.
+   placeSlogan(spot);
    voiceBox.classList.remove('road-voice-enter');
    void voiceBox.offsetWidth;
    voiceBox.classList.add('road-voice-enter');
