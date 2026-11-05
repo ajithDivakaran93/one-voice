@@ -4,6 +4,8 @@ service cloud.firestore {
   match /signatures/{uid} { allow read, write: if false; }
   match /lights/{uid} { allow read: if true; allow write: if false; }
   match /stats/{docId} { allow read: if docId == 'campaign'; allow write: if false; }
+  // Read-only public counts; Cloud Functions alone update the 64 shards.
+  match /counterShards/{shardId} { allow read: if true; allow write: if false; }
   match /{document=**} { allow read, write: if false; }
  }
 }
