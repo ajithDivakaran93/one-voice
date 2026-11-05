@@ -55,6 +55,7 @@ function setDialog(node,show){
 }
 $('openSign').onclick=()=>{if(signed){setDialog($('success'),true);return;}setDialog($('modal'),true);};
 $('viewSupporters').onclick=()=>{setDialog($('supportersModal'),true);renderSupporters();};
+$('viewAllSupporters').onclick=()=>{$('viewSupporters').click();};
 $('moreSupporters').onclick=()=>loadSupporterPage();
 $('viewPetition').onclick=()=>setDialog($('petitionModal'),true);
 $('closeSupporters').onclick=()=>setDialog($('supportersModal'),false);
@@ -83,6 +84,31 @@ function drawPeople(ids){
 }
 // The first page uses a persistent Firestore snapshot, so new signatures
 // appear in the list immediately without reopening or refreshing the dialog.
+function renderLatestSupporters(){
+ const list=$('latestSupporters');
+ if(!list)return;
+ list.replaceChildren();
+ const recent=latestPageDocs.slice(0,10);
+ if(!recent.length){
+  const li=document.createElement('li');
+  li.className='latest-placeholder';
+  li.textContent=directoryError||(!directoryLoaded?'Connecting to supporters…':'Be the first to add your voice.');
+  list.append(li);
+  return;
+ }
+ recent.forEach((item,index)=>{
+  const li=document.createElement('li');
+  if(!item.name)li.className='anonymous-entry';
+  const number=document.createElement('span');
+  number.className='latest-number';
+  number.textContent=String(index+1).padStart(2,'0');
+  const name=document.createElement('span');
+  name.className='latest-name';
+  name.textContent=item.name||'Anonymous supporter';
+  li.append(number,name);
+  list.append(li);
+ });
+}
 function rebuildDirectory(){
  const byId=new Map();
  for(const doc of [...olderPageDocs,...latestPageDocs])byId.set(doc.id,doc);
@@ -251,6 +277,7 @@ async function init(){
     console.warn('Live supporter directory failed',error);
     directoryError='Live supporter list unavailable. Please refresh.';
     renderSupporters();
+    renderLatestSupporters();
   });
   await authM.signInAnonymously(auth);
   ready=true;updateForm();
