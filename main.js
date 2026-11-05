@@ -2,7 +2,8 @@ import {firebaseConfig} from './firebase-config.js';
 const $=id=>document.getElementById(id);
 const canvas=$('signature'),context=canvas.getContext('2d');
 let ready=false,submitting=false,signed=false,points=[],active=null,auth,db,functions,httpsCallable;let recentSupporterIds=[],pendingOwnId=null;
-let storeApi=null,directoryRows=[],directoryCursor=null,directoryBusy=false,directoryDone=false;
+let storeApi=null,directoryRows=[],directoryCursor=null,directoryBusy=false,directoryDone=false,directoryError='',directoryLoaded=false;
+let latestPageDocs=[],olderPageDocs=[],directoryRevision=0;
 const message=(s)=>{$('status').textContent=s;};
 const getStrokeCount=()=>points.reduce((n,line)=>n+line.length,0);
 function redraw(){
@@ -53,8 +54,8 @@ function setDialog(node,show){
  if(show)requestAnimationFrame(()=>{if(node===$('modal'))resizeSignature();});
 }
 $('openSign').onclick=()=>{if(signed){setDialog($('success'),true);return;}setDialog($('modal'),true);};
-$('viewSupporters').onclick=()=>{setDialog($('supportersModal'),true);loadSupporterPage(true);};
-$('moreSupporters').onclick=()=>loadSupporterPage(false);
+$('viewSupporters').onclick=()=>{setDialog($('supportersModal'),true);renderSupporters();};
+$('moreSupporters').onclick=()=>loadSupporterPage();
 $('viewPetition').onclick=()=>setDialog($('petitionModal'),true);
 $('closeSupporters').onclick=()=>setDialog($('supportersModal'),false);
 $('closePetition').onclick=()=>setDialog($('petitionModal'),false);
@@ -80,51 +81,67 @@ function drawPeople(ids){
  $('wall').replaceChildren(wall);
  window.OneVoiceRoad?.setSupporters(recentSupporterIds);
 }
+// The first page uses a persistent Firestore snapshot, so new signatures
+// appear in the list immediately without reopening or refreshing the dialog.
+function rebuildDirectory(){
+ const byId=new Map();
+ for(const doc of [...olderPageDocs,...latestPageDocs])byId.set(doc.id,doc);
+ directoryRows=Array.from(byId.values()).sort((a,b)=>{
+  const at=a.createdAt?.toMillis?.()||0,bt=b.createdAt?.toMillis?.()||0;
+  return bt-at || a.id.localeCompare(b.id);
+ });
+ renderSupporters();
+}
 function renderSupporters(){
  $('supporterTotal').textContent=$('count').textContent;
  const list=$('supporterNames');list.replaceChildren();
- const ol=document.createElement('ol');ol.className='name-list';
- directoryRows.forEach(item=>{
+ if(directoryRows.length){
+  const ol=document.createElement('ol');ol.className='name-list';
+  for(const item of directoryRows){
    const li=document.createElement('li');
    li.textContent=item.name||'Anonymous supporter';
    if(!item.name)li.className='anonymous-entry';
    ol.append(li);
- });
- if(directoryRows.length)list.append(ol);
- else{
+  }
+  list.append(ol);
+ }else{
   const p=document.createElement('p');p.className='empty-supporters';
-  p.textContent=directoryBusy?'Loading supporters…':'No signatures found yet.';
+  p.textContent=directoryError||(!directoryLoaded?'Connecting to live supporters…':'No signatures recorded yet.');
   list.append(p);
  }
- const total=Number($('count').textContent.replace(/,/g,''))||0;
- $('supporterShown').textContent=directoryRows.length.toLocaleString('en-IN')+' of '+(total?total.toLocaleString('en-IN'):'—')+' signatures displayed';
- $('moreSupporters').hidden=directoryDone||directoryRows.length>=total||!directoryRows.length;
+ const raw=$('count').textContent.replace(/,/g,'');
+ const total=raw==='—'?null:Number(raw);
+ $('supporterShown').textContent=directoryError
+  ?directoryError
+  :directoryRows.length.toLocaleString('en-IN')+' of '+(total===null?'—':total.toLocaleString('en-IN'))+' signatures displayed · LIVE';
+ const hasMore=total===null?!directoryDone:directoryRows.length<total;
+ $('moreSupporters').hidden=directoryBusy||directoryDone||!hasMore||!directoryRows.length;
  $('moreSupporters').disabled=directoryBusy;
 }
-async function loadSupporterPage(reset=false){
- if(!storeApi||!db){
-  $('supporterNames').textContent='Connecting to the supporter list…';return;
- }
- if(directoryBusy)return;
- if(reset){directoryRows=[];directoryCursor=null;directoryDone=false;}
- if(directoryDone)return;
- directoryBusy=true;renderSupporters();
+async function loadSupporterPage(){
+ if(!storeApi||!db||directoryBusy||directoryDone)return;
+ directoryBusy=true;directoryError='';renderSupporters();
+ const revision=directoryRevision;
  try{
-  // Explicitly sort newest signatures first across every paginated page.
-  const order=storeApi.orderBy('createdAt','desc');
-  const terms=[order,storeApi.limit(60)];
-  if(directoryCursor)terms.push(storeApi.startAfter(directoryCursor));
-  const query=storeApi.query(storeApi.collection(db,'lights'),...terms);
-  const snap=await storeApi.getDocs(query);
-  directoryRows.push(...snap.docs.map(doc=>{
-   const name=doc.data().displayName;
-   return {name:typeof name==='string'&&name.trim()?name.trim():null};
+  // Cursor is derived from the last loaded historic page, or the live page.
+  const cursor=directoryCursor || latestPageDocs.at(-1)?.snapshot;
+  if(!cursor){directoryDone=true;return;}
+  const q=storeApi.query(storeApi.collection(db,'lights'),
+    storeApi.orderBy('createdAt','desc'),storeApi.startAfter(cursor),storeApi.limit(60));
+  const snap=await storeApi.getDocsFromServer(q);
+  if(revision!==directoryRevision)return;
+  const rows=snap.docs.map(doc=>({
+   id:doc.id,createdAt:doc.data().createdAt,
+   name:typeof doc.data().displayName==='string'&&doc.data().displayName.trim()?doc.data().displayName.trim():null,
+   snapshot:doc
   }));
+  olderPageDocs.push(...rows);
   directoryCursor=snap.docs.at(-1)||directoryCursor;
   directoryDone=snap.docs.length<60;
+  rebuildDirectory();
  }catch(error){
   console.error('Supporter pagination failed',error);
-  $('supporterShown').textContent='Unable to load supporters. Please retry.';
+  directoryError='Older supporters could not be loaded. Please try again.';
  }finally{directoryBusy=false;renderSupporters();}
 }
 function updateCount(value){const shown=Number.isFinite(value)?value.toLocaleString('en-IN'):'—';$('count').textContent=shown;$('countMirror').textContent=shown;renderSupporters();}
@@ -202,21 +219,40 @@ async function init(){
   await authM.signInAnonymously(auth);
   ready=true;updateForm();
   storeM.onSnapshot(storeM.doc(db,'stats','campaign'),snapshot=>{
+   // Never fake the counter: it is the value committed by Cloud Functions.
    updateCount(snapshot.exists()?Number(snapshot.data().count)||0:0);
-  },error=>{console.warn('Counter subscription failed',error);updateCount(NaN);});
-  const q=storeM.query(storeM.collection(db,'lights'),storeM.orderBy('createdAt','desc'),storeM.limit(140));
-  storeM.onSnapshot(q,snapshot=>{
+  },error=>{
+   console.warn('Counter subscription failed',error);
+   updateCount(NaN);
+   $('supporterShown').textContent='Live signature count temporarily unavailable.';
+  });
+  const lightsRef=storeM.collection(db,'lights');
+  const recentQuery=storeM.query(lightsRef,storeM.orderBy('createdAt','desc'),storeM.limit(140));
+  storeM.onSnapshot(recentQuery,snapshot=>{
     const ids=snapshot.docs.map(doc=>doc.id);
-    if(!$('supportersModal').hidden && !directoryBusy)loadSupporterPage(true);
-    // Once the server publishes the record, it no longer needs local priority.
-    if(pendingOwnId && ids.includes(pendingOwnId)) pendingOwnId=null;
+    if(pendingOwnId && ids.includes(pendingOwnId))pendingOwnId=null;
     drawPeople(ids);
-   },error=>{
-    console.warn('Supporter display subscription failed',error);
-    const notice=document.getElementById('voicesNotice');
-    if(notice)notice.textContent='Supporter illustrations temporarily unavailable. Please refresh.';
-    // The supporter directory fetches its own paginated records.
-   });
+  },error=>{
+    console.warn('Supporter illustration subscription failed',error);
+    const notice=$('voicesNotice');
+    if(notice)notice.textContent='Live illustrations unavailable. Please refresh.';
+  });
+  const directoryQuery=storeM.query(lightsRef,storeM.orderBy('createdAt','desc'),storeM.limit(60));
+  storeM.onSnapshot(directoryQuery,snapshot=>{
+    directoryLoaded=true;directoryError='';
+    latestPageDocs=snapshot.docs.map(doc=>({
+      id:doc.id,createdAt:doc.data().createdAt,
+      name:typeof doc.data().displayName==='string'&&doc.data().displayName.trim()?doc.data().displayName.trim():null,
+      snapshot:doc
+    }));
+    // Any historic pages already fetched remain intact; the newest changes
+    // appear at the top without losing the visitor's pagination progress.
+    rebuildDirectory();
+  },error=>{
+    console.warn('Live supporter directory failed',error);
+    directoryError='Live supporter list unavailable. Please refresh.';
+    renderSupporters();
+  });
  }catch(error){
   console.error('Firebase setup failed:',error);
   ready=false;updateForm();
