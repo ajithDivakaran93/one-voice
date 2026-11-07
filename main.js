@@ -374,6 +374,8 @@ async function init(){
   ]);
   const app=appM.initializeApp(firebaseConfig);
   auth=authM.getAuth(app);
+  organizerAuthApi=authM;
+  authM.onAuthStateChanged(auth,()=>{refreshOrganizerStatus();});
   db=storeM.getFirestore(app);
   storeApi=storeM;
   functions=functionsM.getFunctions(app,'asia-south1');
@@ -434,4 +436,137 @@ async function init(){
   message('Unable to connect to the campaign. Ask an organizer to check Firebase Authentication.');
  }
 }
+
+/* A separate Google sign-in is used for organizer exports. The Cloud Function
+ * checks the custom organizer claim; hiding the button alone is not security.
+ */
+let organizerBusy=false,organizerAuthenticated=false;
+let organizerAuthApi=null;
+const exportNote=(text)=>{$('exportStatus').textContent=text;};
+function updateOrganizerButtons(){
+ $('exportActions').hidden=!organizerAuthenticated;
+ $('organizerLogin').textContent=organizerAuthenticated?'ORGANIZER SIGNED IN ✓':'ORGANIZER SIGN IN ↗';
+ $('organizerLogin').disabled=organizerBusy||organizerAuthenticated;
+ for(const id of ['exportPDF','exportCSV'])$(id).disabled=organizerBusy||!organizerAuthenticated;
+}
+async function refreshOrganizerStatus(){
+ if(!auth?.currentUser){organizerAuthenticated=false;updateOrganizerButtons();return;}
+ try{
+  const token=await auth.currentUser.getIdTokenResult(true);
+  organizerAuthenticated=token.claims.oneVoiceOrganizer===true;
+ }catch(error){organizerAuthenticated=false;console.warn('Organizer claim lookup failed',error);}
+ updateOrganizerButtons();
+}
+$('organizerLogin').onclick=async()=>{
+ if(organizerBusy)return;
+ if(!organizerAuthApi||!auth){exportNote('Firebase is not connected yet. Please refresh.');return;}
+ organizerBusy=true;updateOrganizerButtons();exportNote('Sign in with the Google account approved by the campaign organizer.');
+ try{
+  const provider=new organizerAuthApi.GoogleAuthProvider();
+  await organizerAuthApi.signInWithPopup(auth,provider);
+  await refreshOrganizerStatus();
+  exportNote(organizerAuthenticated?'Organizer verified. You can export the report.':'This Google account is not authorized for organizer exports. Ask the project owner to grant the organizer claim.');
+ }catch(error){
+  console.warn('Organizer sign in failed',error);
+  exportNote(error.code==='auth/popup-blocked'?'Popup blocked. Allow popups and try again.':(error.message||'Sign-in failed. Please retry.'));
+ }finally{organizerBusy=false;updateOrganizerButtons();}
+};
+async function getExportRows(){
+ if(!organizerAuthenticated||!auth?.currentUser)throw Error('Organizer authorization required.');
+ const fn=httpsCallable(functions,'exportSupportersPage');
+ const all=[];let cursor=null;
+ do{
+  exportNote('Collecting saved names… '+all.length.toLocaleString('en-IN')+' records loaded');
+  const response=await fn({cursor});
+  const data=response.data||{};
+  if(!Array.isArray(data.rows))throw Error('Invalid export response.');
+  for(const row of data.rows){
+   all.push({
+    name:typeof row.name==='string'?row.name:'', 
+    signedAt:typeof row.signedAt==='string'?row.signedAt:''
+   });
+  }
+  cursor=data.nextCursor||null;
+  if(all.length>250000)throw Error('Export limit reached. Contact the organizer.');
+ }while(cursor);
+ return all;
+}
+function safeCsv(value){
+ let text=String(value??'');
+ if(/^[\\s]*[=+@-]/.test(text))text="'"+text;
+ return '"'+text.replace(/"/g,'""')+'"';
+}
+function exportCsv(rows){
+ const lines=[['No.','Name','Signed At (UTC)'],...rows.map((r,i)=>[i+1,r.name||'Name not recorded',r.signedAt])];
+ const blob=new Blob(['\\uFEFF'+lines.map(a=>a.map(safeCsv).join(',')).join('\\r\\n')],{type:'text/csv;charset=utf-8'});
+ saveBlob(blob,'one-voice-supporters.csv');
+}
+function saveBlob(blob,name){
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');a.href=url;a.download=name;a.style.display='none';
+ document.body.append(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url);},1200);
+}
+async function loadPdfLibrary(){
+ if(window.jspdf?.jsPDF)return window.jspdf.jsPDF;
+ const script=document.createElement('script');
+ script.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
+ script.crossOrigin='anonymous';
+ await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('PDF library could not load. Check your internet connection.'));document.head.append(script);});
+ if(!window.jspdf?.jsPDF)throw Error('PDF library did not initialize.');
+ return window.jspdf.jsPDF;
+}
+async function exportPdf(rows){
+ const jsPDF=await loadPdfLibrary();
+ const pdf=new jsPDF({unit:'mm',format:'a4'});
+ const width=210,margin=16,pageHeight=297;
+ let y=0,page=0;
+ function head(){
+  page++;pdf.setFillColor(17,17,21);pdf.rect(0,0,width,34,'F');
+  pdf.setTextColor(255,255,255);pdf.setFont('helvetica','bold');pdf.setFontSize(17);
+  pdf.text('ONE VOICE',margin,16);
+  pdf.setFontSize(9);pdf.text('INFOPARK | SIGNATURE CAMPAIGN',margin,23);
+  pdf.setTextColor(25,25,30);pdf.setFontSize(11);pdf.text('CONFIDENTIAL - ORGANIZER COPY',margin,44);
+  pdf.setFontSize(9);pdf.text('Saved signature records: '+rows.length.toLocaleString('en-IN'),margin,51);
+  pdf.setDrawColor(205,205,205);pdf.line(margin,56,194,56);
+  pdf.setFont('helvetica','bold');pdf.setFontSize(9);
+  pdf.text('NO.',margin,64);pdf.text('SUPPORTER NAME',34,64);pdf.text('SIGNED AT (UTC)',134,64);
+  y=71;
+ }
+ head();
+ for(let i=0;i<rows.length;i++){
+  if(y>277){pdf.addPage();head();}
+  const entry=rows[i];
+  // jsPDF's built-in fonts don't render Malayalam. Keep CSV as the
+  // lossless source and show a clear note instead of mangled glyphs.
+  const ascii=/^[\\x00-\\x7F]*$/.test(entry.name);
+  const name=ascii?(entry.name||'Name not recorded'):'[Non-Latin name: see CSV]';
+  pdf.setFont('helvetica','normal');pdf.setFontSize(8.5);pdf.setTextColor(30,30,30);
+  pdf.text(String(i+1),margin,y);
+  const wrapped=pdf.splitTextToSize(name,95).slice(0,2);
+  pdf.text(wrapped,34,y);
+  pdf.text((entry.signedAt||'').replace('T',' ').slice(0,19),134,y);
+  y+=Math.max(7,wrapped.length*4.5+1);
+ }
+ const pages=pdf.getNumberOfPages();
+ for(let p=1;p<=pages;p++){pdf.setPage(p);pdf.setFontSize(8);pdf.setTextColor(125,125,125);pdf.text('Private organizer report | Page '+p+' of '+pages,margin,289);}
+ pdf.save('one-voice-supporters.pdf');
+ const nonLatin=rows.some(row=>/[^\\x00-\\x7F]/.test(row.name));
+ if(nonLatin)exportNote('PDF downloaded. Some Malayalam or other non-Latin names need a Unicode-font PDF; download the CSV for complete exact names.');
+}
+async function startExport(type){
+ if(organizerBusy)return;
+ organizerBusy=true;updateOrganizerButtons();
+ try{
+  const rows=await getExportRows();
+  if(type==='pdf')await exportPdf(rows);else exportCsv(rows);
+  if(type!=='pdf'||!rows.some(row=>/[^\\x00-\\x7F]/.test(row.name)))
+   exportNote('Exported '+rows.length.toLocaleString('en-IN')+' saved records. Keep the report confidential.');
+ }catch(error){
+  console.error('Organizer export failed',error);
+  exportNote(error.code==='functions/permission-denied'?'Organizer permission denied. Ask the project owner to authorize your Google account.':error.message||'Export failed. Please try again.');
+ }finally{organizerBusy=false;updateOrganizerButtons();}
+}
+$('exportPDF').onclick=()=>startExport('pdf');
+$('exportCSV').onclick=()=>startExport('csv');
+
 init();
