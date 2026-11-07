@@ -45,3 +45,35 @@ exports.publishSupporterName=onCall({region:'asia-south1',maxInstances:20},async
  });
  return {ok:true};
 });
+
+
+/**
+ * Organizer-only read of saved names. Requires a Firebase Auth custom claim
+ * "oneVoiceOrganizer: true"; never returns handwritten strokes, email or UID.
+ * Client pages in deterministic document-id order so reports can exceed 10k.
+ */
+exports.exportSupportersPage=onCall({region:'asia-south1',maxInstances:10},async request=>{
+ if(!request.auth?.uid||request.auth.token.oneVoiceOrganizer!==true)
+  throw new HttpsError('permission-denied','Organizer access required.');
+ const cursor=request.data?.cursor;
+ if(cursor!==null&&cursor!==undefined&&
+    (typeof cursor!=='string'||cursor.length>180))
+  throw new HttpsError('invalid-argument','Invalid export cursor.');
+ const {FieldPath}=require('firebase-admin/firestore');
+ let q=db.collection('signatures').orderBy(FieldPath.documentId()).limit(300);
+ if(cursor)q=q.startAfter(cursor);
+ const page=await q.get();
+ const rows=page.docs.map(doc=>{
+  const data=doc.data();
+  const rawName=typeof data.name==='string'?data.name:
+    (typeof data.publicDisplayName==='string'?data.publicDisplayName:'');
+  const name=rawName.trim().slice(0,60);
+  const signedAt=data.createdAt?.toDate?.()?.toISOString?.()||'';
+  return {name,signedAt};
+ });
+ return {
+  rows,
+  nextCursor:page.size===300?page.docs[page.docs.length-1].id:null,
+  pageSize:page.size
+ };
+});
