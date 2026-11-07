@@ -55,3 +55,37 @@ This eliminates the single-document write hotspot and removes the previous alway
 ## Public/Private data
 
 `signatures` is server-only. `lights` exposes only public opt-in names, creation time, and an anonymous auth document identifier. `stats/campaign` and `counterShards` are public read-only; all writes must go through Cloud Functions.
+
+
+## Export all saved supporter names (organizers only)
+
+The **View Supporters** popup now includes **Organizer Sign In**, **Download PDF** and
+**Download CSV**. The exports use `exportSupportersPage`, a privileged Cloud Function
+that reads the private `signatures` collection in batches of 300. It excludes
+signature drawings, user IDs, and authentication identifiers. This is a confidential
+organizer report; do not publish names without the signers' permission.
+
+Setup (one time):
+
+1. Firebase Console > Authentication > Sign-in method: enable **Google**.
+   Also check the authorized domain for the deployed website under Authentication > Settings.
+2. Deploy the updated Cloud Function and hosting:
+   `firebase deploy --project one-voice-44e1f --only functions,hosting`
+3. Open the website's View Supporters popup and click **Organizer Sign In**,
+   then sign in with the organizer's Google account. It will initially say unauthorized.
+4. On a trusted computer with Google Cloud Application Default Credentials authorized
+   to manage Firebase Auth users (and after running `npm install` under `functions`), run:
+   `node scripts/grant-organizer.cjs organizer@example.com`
+   Replace the example email. Sign out and back in to refresh the token.
+
+A privileged project administrator can prepare Application Default Credentials by
+running `gcloud auth application-default login`. Never place a service account
+private key or access token into the public repository or website JavaScript.
+
+The PDF uses a browser-downloaded jsPDF library and includes Unicode names rendered
+using browser fonts (including Malayalam, where installed). Large reports may require
+time and memory on mobile; CSV is the most portable backup.
+
+**Important:** Earlier signers did not necessarily consent to public name display.
+The organizer-only report can include their private stored names solely for
+authorized internal purposes; the public supporters list remains consent-filtered.
