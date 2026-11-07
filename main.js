@@ -493,12 +493,12 @@ async function getExportRows(){
 }
 function safeCsv(value){
  let text=String(value??'');
- if(/^[\\s]*[=+@-]/.test(text))text="'"+text;
+ if(/^[\s]*[=+@-]/.test(text))text="'"+text;
  return '"'+text.replace(/"/g,'""')+'"';
 }
 function exportCsv(rows){
  const lines=[['No.','Name','Signed At (UTC)'],...rows.map((r,i)=>[i+1,r.name||'Name not recorded',r.signedAt])];
- const blob=new Blob(['\\uFEFF'+lines.map(a=>a.map(safeCsv).join(',')).join('\\r\\n')],{type:'text/csv;charset=utf-8'});
+ const blob=new Blob(['\uFEFF'+lines.map(a=>a.map(safeCsv).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
  saveBlob(blob,'one-voice-supporters.csv');
 }
 function saveBlob(blob,name){
@@ -539,7 +539,7 @@ async function exportPdf(rows){
   const name=entry.name||'Name not recorded';
   pdf.setFont('helvetica','normal');pdf.setFontSize(8.5);pdf.setTextColor(30,30,30);
   pdf.text(String(i+1),margin,y);
-  const ascii=/^[\\x00-\\x7F]*$/.test(name);
+  const ascii=/^[\x00-\x7F]*$/.test(name);
   let lineHeight=7;
   if(ascii){
     const wrapped=pdf.splitTextToSize(name,95).slice(0,2);
@@ -572,7 +572,7 @@ async function startExport(type){
  try{
   const rows=await getExportRows();
   if(type==='pdf')await exportPdf(rows);else exportCsv(rows);
-  if(type!=='pdf'||!rows.some(row=>/[^\\x00-\\x7F]/.test(row.name)))
+  if(type!=='pdf'||!rows.some(row=>/[^\x00-\x7F]/.test(row.name)))
    exportNote('Exported '+rows.length.toLocaleString('en-IN')+' saved records. Keep the report confidential.');
  }catch(error){
   console.error('Organizer export failed',error);
