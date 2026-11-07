@@ -8,7 +8,7 @@
 <meta property="og:title" content="ONE VOICE | How many more?">
 <meta property="og:description" content="One life lost. One demand: safer roads. Raise your voice for Infopark.">
 <title>ONE VOICE · INFOPARK</title>
-<link rel="stylesheet" href="/style.css?v=34">
+<link rel="stylesheet" href="/style.css?v=35">
 </head>
 <body>
 <header class="site-header"><a class="brand brand-logo" href="#top" aria-label="Progressive Techies — ONE VOICE home"><img src="/progressive-techies-header.svg?v=1" alt="Progressive Techies" width="142" height="60"></a><div class="header-total" aria-live="polite"><strong id="count">—</strong><span>SIGNATURES</span></div></header>
@@ -83,6 +83,12 @@
   <div class="supporter-summary"><strong id="supporterTotal">—</strong><span>TOTAL SIGNATURES</span></div>
   <div id="supporterNames" class="supporter-names" aria-live="polite"><p>Loading supporters…</p></div>
   <div class="directory-paging"><span id="supporterShown">Loading…</span><button id="moreSupporters" type="button" hidden>LOAD MORE SUPPORTERS ↓</button></div>
+  <section class="organizer-export" aria-labelledby="exportTitle">
+    <div><strong id="exportTitle">ORGANIZER EXPORT</strong><p>Confidential report: saved supporter names and dates only. Handwritten signatures are never exported.</p></div>
+    <button id="organizerLogin" type="button">ORGANIZER SIGN IN ↗</button>
+    <div id="exportActions" hidden><button id="exportPDF" type="button">DOWNLOAD PDF ↓</button><button id="exportCSV" type="button">DOWNLOAD CSV ↓</button></div>
+    <p id="exportStatus" role="status" aria-live="polite"></p>
+  </section>
  <p class="privacy-dark">Each entry represents one saved signature, newest first. New signers consent to publishing their name when signing. Earlier private signatures remain anonymous; handwritten signatures stay private.</p>
  </div>
 </div>
@@ -117,5 +123,5 @@
  </div>
 </div>
 <script src="/road-animation.js?v=36" defer></script>
-<script type="module" src="/main.js?v=33"></script>
+<script type="module" src="/main.js?v=34"></script>
 </body></html>
