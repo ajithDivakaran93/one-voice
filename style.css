@@ -281,3 +281,14 @@
 
 /* Keep the longer Infopark Connectivity heading within narrow mobile layouts. */
 .manifesto h2 .connectivity-word{display:inline-block;font-size:.72em;letter-spacing:-.025em}
+
+/* Organizer-only exports inside the View Supporters dialog */
+.organizer-export{margin:24px 0 4px;padding:20px;border:1px solid #d4caca;background:#f7f5f4;color:#151518;border-radius:4px}
+.organizer-export strong{font-size:13px;letter-spacing:1.5px;font-weight:900}
+.organizer-export p{font-size:12px;line-height:1.5;margin:8px 0 14px;color:#4c494b}
+.organizer-export button{border:1px solid #b9243c;background:#b9243c;color:#fff;padding:12px 16px;font-size:12px;font-weight:900;letter-spacing:.5px;min-height:44px;cursor:pointer}
+.organizer-export button:disabled{opacity:.5;cursor:wait}
+.organizer-export #exportActions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.organizer-export #exportActions[hidden]{display:none}
+.organizer-export #exportCSV{background:transparent;color:#9c1730}
+.organizer-export #exportStatus{color:#782338;margin:10px 0 0;white-space:normal;overflow-wrap:anywhere}
