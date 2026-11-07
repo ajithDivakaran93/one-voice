@@ -555,7 +555,7 @@ async function startExport(type){
  try{
   const rows=await getExportRows();
   if(type==='pdf')await exportPdf(rows);else exportCsv(rows);
-  exportNote('Exported '+rows.length.toLocaleString('en-IN')+' saved records. Keep the report confidential.');
+  exportNote((type==='pdf'?'Report prepared for '+rows.length.toLocaleString('en-IN')+' records. Choose Save as PDF in the print dialog.':'Exported '+rows.length.toLocaleString('en-IN')+' saved records.')+' Keep the file confidential.');
  }catch(error){
   console.error('Organizer export failed',error);
   exportNote(error.code==='functions/permission-denied'?'Organizer permission denied. Ask the project owner to authorize your Google account.':error.message||'Export failed. Please try again.');
