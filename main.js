@@ -536,22 +536,35 @@ async function exportPdf(rows){
  for(let i=0;i<rows.length;i++){
   if(y>277){pdf.addPage();head();}
   const entry=rows[i];
-  // jsPDF's built-in fonts don't render Malayalam. Keep CSV as the
-  // lossless source and show a clear note instead of mangled glyphs.
-  const ascii=/^[\\x00-\\x7F]*$/.test(entry.name);
-  const name=ascii?(entry.name||'Name not recorded'):'[Non-Latin name: see CSV]';
+  const name=entry.name||'Name not recorded';
   pdf.setFont('helvetica','normal');pdf.setFontSize(8.5);pdf.setTextColor(30,30,30);
   pdf.text(String(i+1),margin,y);
-  const wrapped=pdf.splitTextToSize(name,95).slice(0,2);
-  pdf.text(wrapped,34,y);
+  const ascii=/^[\\x00-\\x7F]*$/.test(name);
+  let lineHeight=7;
+  if(ascii){
+    const wrapped=pdf.splitTextToSize(name,95).slice(0,2);
+    pdf.text(wrapped,34,y);
+    lineHeight=Math.max(7,wrapped.length*4.5+1);
+  }else{
+    // Paint Unicode names using the browser's shaping engine (including
+    // Malayalam), then place the result into the PDF as a crisp small image.
+    const renderCanvas=document.createElement('canvas');
+    renderCanvas.width=720;renderCanvas.height=46;
+    const paint=renderCanvas.getContext('2d');
+    paint.fillStyle='#fff';paint.fillRect(0,0,720,46);
+    paint.fillStyle='#1b1b1b';
+    paint.font='23px system-ui, sans-serif';paint.textBaseline='middle';
+    const clipped=name.length>60?name.slice(0,60):name;
+    paint.fillText(clipped,0,23,690);
+    pdf.addImage(renderCanvas.toDataURL('image/png'),'PNG',34,y-4.5,95,6.2);
+  }
   pdf.text((entry.signedAt||'').replace('T',' ').slice(0,19),134,y);
-  y+=Math.max(7,wrapped.length*4.5+1);
+  y+=lineHeight;
  }
  const pages=pdf.getNumberOfPages();
  for(let p=1;p<=pages;p++){pdf.setPage(p);pdf.setFontSize(8);pdf.setTextColor(125,125,125);pdf.text('Private organizer report | Page '+p+' of '+pages,margin,289);}
  pdf.save('one-voice-supporters.pdf');
- const nonLatin=rows.some(row=>/[^\\x00-\\x7F]/.test(row.name));
- if(nonLatin)exportNote('PDF downloaded. Some Malayalam or other non-Latin names need a Unicode-font PDF; download the CSV for complete exact names.');
+
 }
 async function startExport(type){
  if(organizerBusy)return;
