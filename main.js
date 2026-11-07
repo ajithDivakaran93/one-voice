@@ -506,65 +506,48 @@ function saveBlob(blob,name){
  const a=document.createElement('a');a.href=url;a.download=name;a.style.display='none';
  document.body.append(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url);},1200);
 }
-async function loadPdfLibrary(){
- if(window.jspdf?.jsPDF)return window.jspdf.jsPDF;
- const script=document.createElement('script');
- script.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
- script.crossOrigin='anonymous';
- await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('PDF library could not load. Check your internet connection.'));document.head.append(script);});
- if(!window.jspdf?.jsPDF)throw Error('PDF library did not initialize.');
- return window.jspdf.jsPDF;
-}
-async function exportPdf(rows){
- const jsPDF=await loadPdfLibrary();
- const pdf=new jsPDF({unit:'mm',format:'a4'});
- const width=210,margin=16,pageHeight=297;
- let y=0,page=0;
- function head(){
-  page++;pdf.setFillColor(17,17,21);pdf.rect(0,0,width,34,'F');
-  pdf.setTextColor(255,255,255);pdf.setFont('helvetica','bold');pdf.setFontSize(17);
-  pdf.text('ONE VOICE',margin,16);
-  pdf.setFontSize(9);pdf.text('INFOPARK | SIGNATURE CAMPAIGN',margin,23);
-  pdf.setTextColor(25,25,30);pdf.setFontSize(11);pdf.text('CONFIDENTIAL - ORGANIZER COPY',margin,44);
-  pdf.setFontSize(9);pdf.text('Saved signature records: '+rows.length.toLocaleString('en-IN'),margin,51);
-  pdf.setDrawColor(205,205,205);pdf.line(margin,56,194,56);
-  pdf.setFont('helvetica','bold');pdf.setFontSize(9);
-  pdf.text('NO.',margin,64);pdf.text('SUPPORTER NAME',34,64);pdf.text('SIGNED AT (UTC)',134,64);
-  y=71;
+// Browser-native PDF export: no jsPDF CDN, preserves Malayalam/Unicode text.
+function exportPdf(rows){
+ let report=document.getElementById('exportPrintReport');
+ if(!report){
+  report=document.createElement('section');
+  report.id='exportPrintReport';
+  report.setAttribute('aria-label','ONE VOICE confidential supporter report');
+  document.body.append(report);
  }
- head();
+ report.replaceChildren();
+ const title=document.createElement('h1');title.textContent='ONE VOICE';
+ const subtitle=document.createElement('p');
+ subtitle.className='report-subtitle';
+ subtitle.textContent='INFOPARK | SIGNATURE CAMPAIGN';
+ const privateLabel=document.createElement('h2');
+ privateLabel.textContent='CONFIDENTIAL — ORGANIZER COPY';
+ const summary=document.createElement('p');
+ summary.className='report-summary';
+ summary.textContent='Saved signature records: '+rows.length.toLocaleString('en-IN')+' | Exported: '+new Date().toLocaleString('en-IN');
+ const table=document.createElement('table');
+ const thead=document.createElement('thead'),heading=document.createElement('tr');
+ for(const text of ['NO.','SUPPORTER NAME','SIGNED AT (UTC)']){
+  const th=document.createElement('th');th.textContent=text;heading.append(th);
+ }
+ thead.append(heading);table.append(thead);
+ const tbody=document.createElement('tbody');
  for(let i=0;i<rows.length;i++){
-  if(y>277){pdf.addPage();head();}
-  const entry=rows[i];
-  const name=entry.name||'Name not recorded';
-  pdf.setFont('helvetica','normal');pdf.setFontSize(8.5);pdf.setTextColor(30,30,30);
-  pdf.text(String(i+1),margin,y);
-  const ascii=/^[\x00-\x7F]*$/.test(name);
-  let lineHeight=7;
-  if(ascii){
-    const wrapped=pdf.splitTextToSize(name,95).slice(0,2);
-    pdf.text(wrapped,34,y);
-    lineHeight=Math.max(7,wrapped.length*4.5+1);
-  }else{
-    // Paint Unicode names using the browser's shaping engine (including
-    // Malayalam), then place the result into the PDF as a crisp small image.
-    const renderCanvas=document.createElement('canvas');
-    renderCanvas.width=720;renderCanvas.height=46;
-    const paint=renderCanvas.getContext('2d');
-    paint.fillStyle='#fff';paint.fillRect(0,0,720,46);
-    paint.fillStyle='#1b1b1b';
-    paint.font='23px system-ui, sans-serif';paint.textBaseline='middle';
-    const clipped=name.length>60?name.slice(0,60):name;
-    paint.fillText(clipped,0,23,690);
-    pdf.addImage(renderCanvas.toDataURL('image/png'),'PNG',34,y-4.5,95,6.2);
+  const tr=document.createElement('tr');
+  const fields=[String(i+1),rows[i].name||'Name not recorded',(rows[i].signedAt||'').replace('T',' ').slice(0,19)];
+  for(const field of fields){
+   const td=document.createElement('td');td.textContent=field;tr.append(td);
   }
-  pdf.text((entry.signedAt||'').replace('T',' ').slice(0,19),134,y);
-  y+=lineHeight;
+  tbody.append(tr);
  }
- const pages=pdf.getNumberOfPages();
- for(let p=1;p<=pages;p++){pdf.setPage(p);pdf.setFontSize(8);pdf.setTextColor(125,125,125);pdf.text('Private organizer report | Page '+p+' of '+pages,margin,289);}
- pdf.save('one-voice-supporters.pdf');
-
+ table.append(tbody);report.append(title,subtitle,privateLabel,summary,table);
+ exportNote('Loaded '+rows.length.toLocaleString('en-IN')+' names. In the print dialog, choose Save as PDF. If no dialog opens, tap DOWNLOAD PDF again.');
+ // Allow a layout frame before printing the report. No external scripts needed.
+ return new Promise(resolve=>{
+  requestAnimationFrame(()=>setTimeout(()=>{
+   try{window.print();}finally{resolve();}
+  },100));
+ });
 }
 async function startExport(type){
  if(organizerBusy)return;
