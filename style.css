@@ -314,3 +314,14 @@
  #exportPrintReport thead{display:table-header-group}
  #exportPrintReport tr{break-inside:avoid;page-break-inside:avoid}
 }
+
+/* Confidential A4 petition register — signature column */
+@media print {
+ #exportPrintReport th:nth-child(1),#exportPrintReport td:nth-child(1){width:8%}
+ #exportPrintReport th:nth-child(2),#exportPrintReport td:nth-child(2){width:31%}
+ #exportPrintReport th:nth-child(3),#exportPrintReport td:nth-child(3){width:37%}
+ #exportPrintReport th:nth-child(4),#exportPrintReport td:nth-child(4){width:24%}
+ #exportPrintReport td.report-signature{padding:1mm 2mm}
+ #exportPrintReport td.report-signature svg{display:block;width:100%;height:15mm;max-height:15mm}
+ #exportPrintReport tr{break-inside:avoid;page-break-inside:avoid}
+}
