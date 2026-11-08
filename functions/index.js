@@ -48,19 +48,21 @@ exports.publishSupporterName=onCall({region:'asia-south1',maxInstances:20},async
 
 
 /**
- * Organizer-only read of saved names. Requires a Firebase Auth custom claim
- * "oneVoiceOrganizer: true"; never returns handwritten strokes, email or UID.
- * Client pages in deterministic document-id order so reports can exceed 10k.
+ * Organizer-only paginated export. Include private handwritten signature
+ * coordinates only when explicitly requested for the confidential PDF.
+ * A smaller page size keeps callable response sizes predictable.
  */
 exports.exportSupportersPage=onCall({region:'asia-south1',maxInstances:10},async request=>{
  if(!request.auth?.uid||request.auth.token.oneVoiceOrganizer!==true)
   throw new HttpsError('permission-denied','Organizer access required.');
  const cursor=request.data?.cursor;
+ const includeSignatures=request.data?.includeSignatures===true;
  if(cursor!==null&&cursor!==undefined&&
     (typeof cursor!=='string'||cursor.length>180))
   throw new HttpsError('invalid-argument','Invalid export cursor.');
  const {FieldPath}=require('firebase-admin/firestore');
- let q=db.collection('signatures').orderBy(FieldPath.documentId()).limit(300);
+ const limit=includeSignatures?25:300;
+ let q=db.collection('signatures').orderBy(FieldPath.documentId()).limit(limit);
  if(cursor)q=q.startAfter(cursor);
  const page=await q.get();
  const rows=page.docs.map(doc=>{
@@ -69,11 +71,18 @@ exports.exportSupportersPage=onCall({region:'asia-south1',maxInstances:10},async
     (typeof data.publicDisplayName==='string'?data.publicDisplayName:'');
   const name=rawName.trim().slice(0,60);
   const signedAt=data.createdAt?.toDate?.()?.toISOString?.()||'';
-  return {name,signedAt};
+  if(!includeSignatures)return {name,signedAt};
+  // Old/incomplete records may have no valid strokes. Never invent them.
+  const strokes=Array.isArray(data.strokes)?data.strokes.slice(0,40).map(line=>
+    Array.isArray(line)?line.slice(0,400).filter(point=>
+      Array.isArray(point)&&point.length===2&&
+      point.every(v=>typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=1)
+    ):[]):[];
+  return {name,signedAt,strokes};
  });
  return {
   rows,
-  nextCursor:page.size===300?page.docs[page.docs.length-1].id:null,
+  nextCursor:page.size===limit?page.docs[page.docs.length-1].id:null,
   pageSize:page.size
  };
 });
