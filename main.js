@@ -471,19 +471,20 @@ $('organizerLogin').onclick=async()=>{
   exportNote(error.code==='auth/popup-blocked'?'Popup blocked. Allow popups and try again.':(error.message||'Sign-in failed. Please retry.'));
  }finally{organizerBusy=false;updateOrganizerButtons();}
 };
-async function getExportRows(){
+async function getExportRows(includeSignatures=false){
  if(!organizerAuthenticated||!auth?.currentUser)throw Error('Organizer authorization required.');
  const fn=httpsCallable(functions,'exportSupportersPage');
  const all=[];let cursor=null;
  do{
-  exportNote('Collecting saved names… '+all.length.toLocaleString('en-IN')+' records loaded');
-  const response=await fn({cursor});
+  exportNote('Collecting '+(includeSignatures?'names and signatures':'names')+'… '+all.length.toLocaleString('en-IN')+' records loaded');
+  const response=await fn({cursor,includeSignatures});
   const data=response.data||{};
   if(!Array.isArray(data.rows))throw Error('Invalid export response.');
   for(const row of data.rows){
    all.push({
     name:typeof row.name==='string'?row.name:'', 
-    signedAt:typeof row.signedAt==='string'?row.signedAt:''
+    signedAt:typeof row.signedAt==='string'?row.signedAt:'',
+    strokes:includeSignatures&&Array.isArray(row.strokes)?row.strokes:[]
    });
   }
   cursor=data.nextCursor||null;
@@ -512,7 +513,7 @@ function exportPdf(rows){
  if(!report){
   report=document.createElement('section');
   report.id='exportPrintReport';
-  report.setAttribute('aria-label','ONE VOICE confidential supporter report');
+  report.setAttribute('aria-label','ONE VOICE confidential supporter report with digital signatures');
   document.body.append(report);
  }
  report.replaceChildren();
@@ -527,21 +528,42 @@ function exportPdf(rows){
  summary.textContent='Saved signature records: '+rows.length.toLocaleString('en-IN')+' | Exported: '+new Date().toLocaleString('en-IN');
  const table=document.createElement('table');
  const thead=document.createElement('thead'),heading=document.createElement('tr');
- for(const text of ['NO.','SUPPORTER NAME','SIGNED AT (UTC)']){
+ for(const text of ['NO.','SUPPORTER NAME','HANDWRITTEN SIGNATURE','SIGNED AT (UTC)']){
   const th=document.createElement('th');th.textContent=text;heading.append(th);
  }
  thead.append(heading);table.append(thead);
  const tbody=document.createElement('tbody');
  for(let i=0;i<rows.length;i++){
   const tr=document.createElement('tr');
-  const fields=[String(i+1),rows[i].name||'Name not recorded',(rows[i].signedAt||'').replace('T',' ').slice(0,19)];
-  for(const field of fields){
-   const td=document.createElement('td');td.textContent=field;tr.append(td);
-  }
-  tbody.append(tr);
+  const n=document.createElement('td');n.textContent=String(i+1);
+  const name=document.createElement('td');name.textContent=rows[i].name||'Name not recorded';
+  const signature=document.createElement('td');signature.className='report-signature';
+  const strokes=rows[i].strokes;
+  if(Array.isArray(strokes)&&strokes.some(line=>Array.isArray(line)&&line.length)){
+   const ns='http://www.w3.org/2000/svg';
+   const svg=document.createElementNS(ns,'svg');
+   svg.setAttribute('viewBox','0 0 1000 1000');
+   svg.setAttribute('preserveAspectRatio','none');
+   svg.setAttribute('role','img');
+   svg.setAttribute('aria-label','Digitally drawn signature');
+   for(const line of strokes){
+    if(!Array.isArray(line)||!line.length)continue;
+    const valid=line.filter(pt=>Array.isArray(pt)&&pt.length===2&&pt.every(v=>typeof v==='number'&&v>=0&&v<=1));
+    if(!valid.length)continue;
+    const path=document.createElementNS(ns,'path');
+    const d=valid.map((pt,j)=>(j?'L':'M')+(pt[0]*1000).toFixed(1)+' '+(pt[1]*1000).toFixed(1)).join(' ');
+    path.setAttribute('d',valid.length===1?d+' l .5 .5':d);
+    path.setAttribute('fill','none');path.setAttribute('stroke','#121212');
+    path.setAttribute('stroke-width','12');path.setAttribute('stroke-linecap','round');
+    path.setAttribute('stroke-linejoin','round');svg.append(path);
+   }
+   signature.append(svg);
+  }else signature.textContent='Not available';
+  const date=document.createElement('td');date.textContent=(rows[i].signedAt||'').replace('T',' ').slice(0,19);
+  tr.append(n,name,signature,date);tbody.append(tr);
  }
  table.append(tbody);report.append(title,subtitle,privateLabel,summary,table);
- exportNote('Loaded '+rows.length.toLocaleString('en-IN')+' names. In the print dialog, choose Save as PDF. If no dialog opens, tap DOWNLOAD PDF again.');
+ exportNote('Loaded '+rows.length.toLocaleString('en-IN')+' names and signatures. In the print dialog, choose Save as PDF. If no dialog opens, tap DOWNLOAD PDF again.');
  // Allow a layout frame before printing the report. No external scripts needed.
  return new Promise(resolve=>{
   requestAnimationFrame(()=>setTimeout(()=>{
@@ -553,7 +575,7 @@ async function startExport(type){
  if(organizerBusy)return;
  organizerBusy=true;updateOrganizerButtons();
  try{
-  const rows=await getExportRows();
+  const rows=await getExportRows(type==='pdf');
   if(type==='pdf')await exportPdf(rows);else exportCsv(rows);
   exportNote((type==='pdf'?'Report prepared for '+rows.length.toLocaleString('en-IN')+' records. Choose Save as PDF in the print dialog.':'Exported '+rows.length.toLocaleString('en-IN')+' saved records.')+' Keep the file confidential.');
  }catch(error){
